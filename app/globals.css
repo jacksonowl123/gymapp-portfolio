@@ -1,0 +1,1441 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #171714;
+  --ink-soft: #24241f;
+  --paper: #f3f0e9;
+  --surface: #faf8f2;
+  --orange: #f36b35;
+  --orange-dark: #ce4c1d;
+  --lime: #d6e56f;
+  --sage: #7fb6a4;
+  --muted: #76766e;
+  --line: #d7d3c9;
+  --dark-line: #3b3b34;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--ink);
+  color: var(--ink);
+  font-family: var(--font-sans), Arial, sans-serif;
+  margin: 0;
+}
+
+body::selection {
+  background: var(--orange);
+  color: #fff;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+select,
+input {
+  font: inherit;
+}
+
+button,
+a,
+select,
+label {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid var(--orange);
+  outline-offset: 3px;
+}
+
+main {
+  background: var(--paper);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.topbar {
+  align-items: center;
+  background: var(--paper);
+  border-bottom: 1px solid var(--ink);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  min-height: 86px;
+  padding: 0 48px;
+}
+
+.brand {
+  align-items: center;
+  display: inline-flex;
+  font-size: 20px;
+  font-weight: 900;
+  gap: 11px;
+  letter-spacing: -0.04em;
+  width: fit-content;
+}
+
+.brandGlyph {
+  background: var(--orange);
+  border-radius: 50%;
+  display: inline-block;
+  height: 29px;
+  overflow: hidden;
+  position: relative;
+  width: 29px;
+}
+
+.brandGlyph::after {
+  background: var(--ink);
+  content: "";
+  height: 36px;
+  left: 13px;
+  position: absolute;
+  top: -3px;
+  transform: rotate(37deg);
+  width: 4px;
+}
+
+.topbar nav {
+  display: flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  gap: 38px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.topbar nav a {
+  padding: 10px 0;
+  position: relative;
+}
+
+.topbar nav a::after {
+  background: var(--orange);
+  bottom: 3px;
+  content: "";
+  height: 2px;
+  left: 0;
+  position: absolute;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 180ms ease;
+  width: 100%;
+}
+
+.topbar nav a:hover::after {
+  transform: scaleX(1);
+}
+
+.profilePill {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-self: end;
+}
+
+.profilePill > span:first-child {
+  align-items: center;
+  background: var(--ink);
+  border-radius: 50%;
+  color: var(--paper);
+  display: inline-flex;
+  font-size: 10px;
+  font-weight: 800;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.profileText {
+  display: flex;
+  flex-direction: column;
+}
+
+.profileText strong {
+  font-size: 11px;
+}
+
+.profileText small {
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 2px;
+}
+
+.hero {
+  background: var(--ink);
+  color: var(--paper);
+  display: grid;
+  grid-template-columns: minmax(0, 1.04fr) minmax(480px, 0.96fr);
+  min-height: 690px;
+  overflow: hidden;
+}
+
+.heroCopy {
+  align-self: center;
+  padding: 82px 6vw 82px max(48px, calc((100vw - 1440px) / 2 + 48px));
+  position: relative;
+  z-index: 2;
+}
+
+.heroCopy::before {
+  background: linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+  background-size: 85px 100%;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.eyebrow,
+.sectionKicker,
+.smallLabel,
+.cardTopline,
+.planDayTop,
+.goalOptions legend,
+.dayOptions legend,
+.formGrid label > span {
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  align-items: center;
+  color: #b8b8af;
+  display: flex;
+  gap: 10px;
+  margin: 0 0 28px;
+}
+
+.eyebrow span {
+  color: var(--orange);
+  font-size: 16px;
+}
+
+.hero h1 {
+  font-size: clamp(62px, 6.7vw, 112px);
+  font-weight: 880;
+  letter-spacing: -0.075em;
+  line-height: 0.85;
+  margin: 0;
+  max-width: 850px;
+  position: relative;
+}
+
+.hero h1 em,
+.coachIntro h2 em {
+  color: var(--orange);
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.055em;
+}
+
+.heroIntro {
+  color: #b9b9b0;
+  font-size: 16px;
+  line-height: 1.65;
+  margin: 36px 0 0;
+  max-width: 550px;
+  position: relative;
+}
+
+.heroActions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  margin-top: 38px;
+  position: relative;
+}
+
+.primaryButton,
+.generateButton {
+  align-items: center;
+  background: var(--orange);
+  border: 1px solid var(--orange);
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-weight: 900;
+  gap: 30px;
+  justify-content: space-between;
+  letter-spacing: 0.08em;
+  min-height: 53px;
+  padding: 0 19px;
+  text-transform: uppercase;
+  transition: background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.primaryButton:hover,
+.generateButton:hover {
+  background: #ff7a44;
+  transform: translateY(-2px);
+}
+
+.primaryButton:disabled {
+  background: #a8a69f;
+  border-color: #a8a69f;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.textButton {
+  border-bottom: 1px solid #707069;
+  color: #e2e0d8;
+  font-size: 12px;
+  padding: 12px 0;
+}
+
+.textButton span {
+  color: var(--orange);
+  margin-left: 8px;
+}
+
+.heroVisual {
+  background:
+    linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px),
+    var(--ink-soft);
+  background-size: 56px 56px;
+  border-left: 1px solid var(--dark-line);
+  min-height: 690px;
+  overflow: hidden;
+  position: relative;
+}
+
+.orangeOrb {
+  background: var(--orange);
+  border-radius: 50%;
+  height: 480px;
+  position: absolute;
+  right: -150px;
+  top: 50px;
+  width: 480px;
+}
+
+.orangeOrb::after {
+  border: 1px solid rgba(23,23,20,.55);
+  border-radius: 50%;
+  content: "";
+  inset: 42px;
+  position: absolute;
+}
+
+.weekCard {
+  backdrop-filter: blur(12px);
+  background: rgba(23, 23, 20, .88);
+  border: 1px solid #4d4d45;
+  left: 9%;
+  padding: 22px;
+  position: absolute;
+  top: 90px;
+  width: min(390px, 62%);
+}
+
+.cardTopline {
+  color: #8c8c84;
+  display: flex;
+  justify-content: space-between;
+}
+
+.cardTopline strong {
+  color: var(--paper);
+  font-size: 9px;
+}
+
+.weekBars {
+  display: flex;
+  gap: 6px;
+  margin: 27px 0;
+}
+
+.weekBars span {
+  background: #474740;
+  height: 5px;
+  width: 100%;
+}
+
+.weekBars span.filled {
+  background: var(--orange);
+}
+
+.weekCard > p {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+}
+
+.weekCard > p strong {
+  font-size: 52px;
+  letter-spacing: -0.06em;
+  line-height: .9;
+}
+
+.weekCard > p span {
+  color: #a3a39b;
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.nextCard {
+  background: var(--paper);
+  bottom: 105px;
+  color: var(--ink);
+  min-height: 250px;
+  padding: 25px;
+  position: absolute;
+  right: 8%;
+  width: min(430px, 68%);
+}
+
+.nextCard::before {
+  background: var(--lime);
+  content: "";
+  height: 10px;
+  left: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.nextCard .smallLabel {
+  color: var(--muted);
+}
+
+.nextCard h2 {
+  font-size: clamp(32px, 3.2vw, 50px);
+  letter-spacing: -0.055em;
+  line-height: .95;
+  margin: 37px 0;
+  max-width: 330px;
+}
+
+.nextCard > div {
+  display: flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  gap: 18px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.nextCard > a {
+  align-items: center;
+  background: var(--orange);
+  bottom: 0;
+  display: flex;
+  font-size: 25px;
+  height: 55px;
+  justify-content: center;
+  position: absolute;
+  right: 0;
+  width: 55px;
+}
+
+.sideCaption {
+  bottom: 24px;
+  color: #7e7e76;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: .18em;
+  margin: 0;
+  position: absolute;
+  right: 8%;
+}
+
+.dashboard,
+.planSection,
+.coachSection,
+.historySection {
+  padding: 95px max(48px, calc((100vw - 1440px) / 2 + 48px));
+}
+
+.sectionHeader {
+  align-items: end;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 38px;
+}
+
+.sectionKicker {
+  color: var(--orange-dark);
+  margin: 0 0 12px;
+}
+
+.sectionHeader h2,
+.coachIntro h2,
+.historySection h2 {
+  font-size: clamp(42px, 5vw, 72px);
+  letter-spacing: -0.065em;
+  line-height: .95;
+  margin: 0;
+}
+
+.dateBadge {
+  align-items: baseline;
+  border-bottom: 1px solid var(--ink);
+  display: flex;
+  gap: 12px;
+  padding: 0 0 8px 40px;
+}
+
+.dateBadge span,
+.dateBadge small {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .1em;
+}
+
+.dateBadge strong {
+  font-size: 32px;
+  letter-spacing: -.05em;
+}
+
+.trainingGrid {
+  display: grid;
+  gap: 0;
+  grid-template-columns: 1fr 320px;
+}
+
+.workoutPanel {
+  background: var(--surface);
+  border: 1px solid var(--ink);
+}
+
+.workoutHeading {
+  align-items: start;
+  border-bottom: 1px solid var(--ink);
+  display: flex;
+  justify-content: space-between;
+  padding: 26px 28px;
+}
+
+.smallLabel {
+  color: var(--muted);
+}
+
+.workoutHeading h3 {
+  font-size: 38px;
+  letter-spacing: -.055em;
+  margin: 10px 0 0;
+}
+
+.focusPill {
+  background: var(--lime);
+  border-radius: 999px;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .07em;
+  padding: 9px 12px;
+  text-transform: uppercase;
+}
+
+.exerciseRow {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 42px 1fr auto;
+  min-height: 82px;
+  padding: 12px 28px;
+  transition: background 160ms ease;
+}
+
+.exerciseRow:hover {
+  background: #f0ede4;
+}
+
+.exerciseRow input {
+  height: 1px;
+  opacity: 0;
+  position: absolute;
+  width: 1px;
+}
+
+.checkmark {
+  align-items: center;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  display: flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  height: 34px;
+  justify-content: center;
+  transition: background 160ms ease;
+  width: 34px;
+}
+
+.exerciseRow.done .checkmark {
+  background: var(--orange);
+}
+
+.exerciseRow.done .exerciseName strong {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.exerciseName {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.exerciseName strong {
+  font-size: 15px;
+}
+
+.exerciseName small,
+.historyList small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.exerciseSets {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.workoutFooter {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  padding: 20px 28px;
+}
+
+.workoutFooter p {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 0;
+}
+
+.workoutFooter p strong {
+  color: var(--ink);
+  font-size: 18px;
+  margin-right: 5px;
+}
+
+.progressPanel {
+  background: var(--ink);
+  color: var(--paper);
+  padding: 28px;
+}
+
+.progressPanel .smallLabel {
+  color: #a1a198;
+}
+
+.progressRing {
+  align-items: center;
+  background: conic-gradient(var(--orange) var(--progress), #3a3a34 0);
+  border-radius: 50%;
+  display: flex;
+  height: 182px;
+  justify-content: center;
+  margin: 34px auto;
+  position: relative;
+  width: 182px;
+}
+
+.progressRing::after {
+  background: var(--ink);
+  border-radius: 50%;
+  content: "";
+  inset: 13px;
+  position: absolute;
+}
+
+.progressRing > div {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  text-align: center;
+  z-index: 1;
+}
+
+.progressRing strong {
+  font-size: 41px;
+  letter-spacing: -.06em;
+}
+
+.progressRing span {
+  color: #9c9c94;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.progressStats {
+  border-bottom: 1px solid var(--dark-line);
+  border-top: 1px solid var(--dark-line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.progressStats p {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 18px 0;
+}
+
+.progressStats p:first-child {
+  border-right: 1px solid var(--dark-line);
+}
+
+.progressStats p:last-child {
+  padding-left: 20px;
+}
+
+.progressStats strong {
+  font-size: 26px;
+}
+
+.progressStats span {
+  color: #8d8d85;
+  font-size: 9px;
+  margin-top: 2px;
+}
+
+.progressMessage {
+  color: #b3b3ab;
+  font-size: 11px;
+  line-height: 1.55;
+  margin: 22px 0 0;
+}
+
+.planSection {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.lightHeader {
+  border-bottom: 1px solid var(--dark-line);
+  padding-bottom: 35px;
+}
+
+.lightHeader .sectionKicker {
+  color: var(--orange);
+}
+
+.sectionDescription {
+  color: #aaa9a1;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 420px;
+}
+
+.planGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.planDay {
+  background: transparent;
+  border: 0;
+  border-right: 1px solid var(--dark-line);
+  color: var(--paper);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  min-height: 280px;
+  padding: 22px 20px;
+  position: relative;
+  text-align: left;
+  transition: background 180ms ease, transform 180ms ease;
+}
+
+.planDay:first-child {
+  border-left: 1px solid var(--dark-line);
+}
+
+.planDay::after {
+  background: var(--day-accent, var(--orange));
+  bottom: 0;
+  content: "";
+  height: 7px;
+  left: 0;
+  position: absolute;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 180ms ease;
+  width: 100%;
+}
+
+.planDay:hover,
+.planDay.active {
+  background: #22221e;
+  transform: translateY(-5px);
+}
+
+.planDay:hover::after,
+.planDay.active::after {
+  transform: scaleX(1);
+}
+
+.planDayTop {
+  color: #8e8e86;
+  display: flex;
+  justify-content: space-between;
+}
+
+.planDayTop strong {
+  color: var(--day-accent, var(--paper));
+}
+
+.planDayTitle {
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: -.04em;
+  line-height: 1.04;
+  margin: auto 0;
+  max-width: 170px;
+}
+
+.planDayMeta {
+  align-items: center;
+  color: #92928a;
+  display: flex;
+  font-size: 9px;
+  justify-content: space-between;
+}
+
+.planDayMeta > span:last-child {
+  color: var(--paper);
+  font-size: 17px;
+}
+
+.planDay.rest {
+  cursor: default;
+  opacity: .55;
+}
+
+.planDay.rest:hover {
+  background: transparent;
+  transform: none;
+}
+
+.coachSection {
+  display: grid;
+  gap: 9vw;
+  grid-template-columns: minmax(0, .82fr) minmax(520px, 1.18fr);
+}
+
+.coachIntro {
+  align-self: center;
+}
+
+.coachIntro > p:not(.sectionKicker) {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.7;
+  margin: 28px 0 0;
+  max-width: 480px;
+}
+
+.coachNote {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--ink);
+  border-top: 1px solid var(--ink);
+  display: flex;
+  gap: 18px;
+  margin-top: 42px;
+  padding: 20px 0;
+}
+
+.coachNote > span {
+  color: var(--orange);
+  font-size: 20px;
+}
+
+.coachNote p {
+  font-size: 12px !important;
+  margin: 0 !important;
+}
+
+.coachNote strong {
+  color: var(--ink);
+  display: block;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+.quizCard {
+  background: var(--surface);
+  border: 1px solid var(--ink);
+  box-shadow: 12px 12px 0 var(--orange);
+  padding: 30px;
+}
+
+.quizHeader {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 27px;
+  padding-bottom: 24px;
+}
+
+.quizHeader h3 {
+  font-size: 28px;
+  letter-spacing: -.045em;
+  margin: 8px 0 0;
+}
+
+.quizStep {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  padding: 8px 10px;
+  text-transform: uppercase;
+}
+
+.goalOptions,
+.dayOptions {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.goalOptions legend,
+.dayOptions legend {
+  margin-bottom: 12px;
+}
+
+.goalOptions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.goalOptions legend {
+  grid-column: 1 / -1;
+}
+
+.goalOptions button,
+.dayOptions button {
+  background: transparent;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  min-height: 48px;
+  text-align: left;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.goalOptions button {
+  font-size: 12px;
+  padding: 0 14px;
+}
+
+.goalOptions button:hover,
+.dayOptions button:hover,
+.goalOptions button.selected,
+.dayOptions button.selected {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.goalOptions button.selected::before {
+  color: var(--orange);
+  content: "●";
+  margin-right: 8px;
+}
+
+.formGrid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  margin: 22px 0;
+}
+
+.formGrid label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.formGrid select {
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--ink) 50%) calc(100% - 18px) 20px / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--ink) 50%, transparent 50%) calc(100% - 13px) 20px / 5px 5px no-repeat,
+    transparent;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  cursor: pointer;
+  min-height: 48px;
+  padding: 0 14px;
+}
+
+.dayOptions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.dayOptions legend {
+  grid-column: 1 / -1;
+}
+
+.dayOptions button {
+  align-items: center;
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+  text-align: center;
+}
+
+.dayOptions button strong {
+  font-size: 19px;
+}
+
+.dayOptions button span {
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.generateButton {
+  margin-top: 24px;
+  width: 100%;
+}
+
+.safetyNote {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.5;
+  margin: 14px 0 0;
+  text-align: center;
+}
+
+.historySection {
+  align-items: start;
+  background: #e7e3da;
+  display: grid;
+  gap: 7vw;
+  grid-template-columns: .68fr 1.32fr;
+}
+
+.historyList {
+  border-top: 1px solid var(--ink);
+}
+
+.historyList article {
+  align-items: center;
+  border-bottom: 1px solid #b9b5ac;
+  display: grid;
+  gap: 20px;
+  grid-template-columns: 64px 1fr 36px;
+  min-height: 86px;
+}
+
+.historyDate {
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.historyList article > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.historyCheck {
+  align-items: center;
+  background: var(--lime);
+  border-radius: 50%;
+  display: flex;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.emptyHistory {
+  align-items: center;
+  border-bottom: 1px solid #b9b5ac;
+  display: grid;
+  gap: 22px;
+  grid-template-columns: 54px 1fr;
+  min-height: 120px;
+}
+
+.emptyHistory > span {
+  align-items: center;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  display: flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
+.emptyHistory p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.emptyHistory strong {
+  color: var(--ink);
+  display: block;
+}
+
+footer {
+  align-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  min-height: 120px;
+  padding: 0 max(48px, calc((100vw - 1440px) / 2 + 48px));
+}
+
+.footerBrand .brandGlyph::after {
+  background: var(--ink);
+}
+
+footer p,
+footer > a:last-child {
+  color: #8e8e86;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+footer > a:last-child {
+  justify-self: end;
+}
+
+.saveToast {
+  background: var(--ink);
+  bottom: 24px;
+  color: var(--paper);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  left: 50%;
+  opacity: 0;
+  padding: 14px 18px;
+  pointer-events: none;
+  position: fixed;
+  transform: translate(-50%, 20px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  z-index: 10;
+}
+
+.saveToast.visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+@media (max-width: 1080px) {
+  .topbar {
+    padding-inline: 28px;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .heroVisual {
+    border-left: 0;
+    border-top: 1px solid var(--dark-line);
+    min-height: 620px;
+  }
+
+  .trainingGrid {
+    grid-template-columns: 1fr 280px;
+  }
+
+  .planGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .planDay {
+    border-bottom: 1px solid var(--dark-line);
+  }
+
+  .coachSection {
+    gap: 60px;
+    grid-template-columns: 1fr;
+  }
+
+  .coachIntro {
+    display: grid;
+    gap: 30px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .coachIntro .sectionKicker,
+  .coachIntro h2 {
+    grid-column: 1;
+  }
+
+  .coachIntro > p:not(.sectionKicker),
+  .coachNote {
+    grid-column: 2;
+  }
+
+  .coachIntro > p:not(.sectionKicker) {
+    grid-row: 1 / 3;
+    margin-top: 0;
+  }
+
+  .coachNote {
+    margin-top: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    grid-template-columns: 1fr auto;
+    min-height: 74px;
+  }
+
+  .topbar nav {
+    display: none;
+  }
+
+  .profileText {
+    display: none;
+  }
+
+  .heroCopy {
+    padding: 70px 22px;
+  }
+
+  .hero h1 {
+    font-size: clamp(56px, 17vw, 82px);
+  }
+
+  .heroIntro {
+    font-size: 14px;
+  }
+
+  .heroVisual {
+    min-height: 540px;
+  }
+
+  .orangeOrb {
+    height: 360px;
+    right: -130px;
+    width: 360px;
+  }
+
+  .weekCard {
+    left: 22px;
+    top: 48px;
+    width: 74%;
+  }
+
+  .nextCard {
+    bottom: 64px;
+    right: 22px;
+    width: 76%;
+  }
+
+  .dashboard,
+  .planSection,
+  .coachSection,
+  .historySection {
+    padding: 72px 22px;
+  }
+
+  .sectionHeader {
+    align-items: flex-start;
+    gap: 26px;
+  }
+
+  .dateBadge {
+    padding-left: 0;
+  }
+
+  .trainingGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .progressPanel {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: auto 170px 1fr;
+  }
+
+  .progressRing {
+    grid-column: 1;
+    grid-row: 2 / 4;
+    height: 145px;
+    margin: 0;
+    width: 145px;
+  }
+
+  .progressStats {
+    grid-column: 2 / 4;
+  }
+
+  .progressMessage {
+    grid-column: 2 / 4;
+    margin: 0;
+  }
+
+  .planGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .planDay {
+    min-height: 240px;
+  }
+
+  .coachIntro {
+    display: block;
+  }
+
+  .coachIntro > p:not(.sectionKicker) {
+    margin-top: 24px;
+  }
+
+  .coachNote {
+    margin-top: 34px;
+  }
+
+  .historySection {
+    grid-template-columns: 1fr;
+  }
+
+  footer {
+    gap: 18px;
+    grid-template-columns: 1fr;
+    padding: 34px 22px;
+  }
+
+  footer p,
+  footer > a:last-child {
+    justify-self: start;
+    margin: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .heroActions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .primaryButton {
+    width: 100%;
+  }
+
+  .sectionHeader {
+    flex-direction: column;
+  }
+
+  .trainingGrid {
+    margin-inline: -22px;
+  }
+
+  .workoutPanel {
+    border-left: 0;
+    border-right: 0;
+  }
+
+  .workoutHeading,
+  .exerciseRow,
+  .workoutFooter {
+    padding-inline: 18px;
+  }
+
+  .exerciseRow {
+    gap: 12px;
+    grid-template-columns: 34px 1fr auto;
+  }
+
+  .workoutFooter {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .progressPanel {
+    grid-template-columns: 120px 1fr;
+  }
+
+  .progressRing {
+    height: 120px;
+    width: 120px;
+  }
+
+  .progressRing strong {
+    font-size: 33px;
+  }
+
+  .progressStats,
+  .progressMessage {
+    grid-column: 2;
+  }
+
+  .planGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .planDay {
+    border-left: 1px solid var(--dark-line);
+    min-height: 210px;
+  }
+
+  .quizCard {
+    margin-inline: -10px;
+    padding: 22px;
+  }
+
+  .goalOptions,
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .dayOptions button {
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
