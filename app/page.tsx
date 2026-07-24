@@ -453,9 +453,9 @@ export default function Home() {
           <div className="appPage">
             <div className="pageTitle">
               <div>
-                <p className="eyebrow">OVERVIEW</p>
-                <h1>Welcome back.</h1>
-                <span>Your next session is ready when you are.</span>
+                <p className="eyebrow">TRAINING DASHBOARD</p>
+                <h1>Ready to put in the work?</h1>
+                <span>Your plan, performance and next session in one place.</span>
               </div>
               <button
                 className="secondaryAction"
@@ -465,6 +465,44 @@ export default function Home() {
                 Edit plan
               </button>
             </div>
+
+            <section className="trainingHero">
+              <div className="trainingHeroContent">
+                <span className="heroTag">TODAY&apos;S RECOMMENDATION</span>
+                <p>{workout.day} · {recommendation.name}</p>
+                <h2>{workout.title}</h2>
+                <div className="heroMeta">
+                  <span><strong>{workout.duration}</strong> min</span>
+                  <span><strong>{workout.exercises.length}</strong> exercises</span>
+                  <span><strong>{profile.experience}</strong> level</span>
+                </div>
+                <div className="heroFocus">
+                  {Array.from(new Set(workout.exercises.map((exercise) => exercise.focus)))
+                    .slice(0, 3)
+                    .map((focus) => (
+                      <span key={focus}>{focus}</span>
+                    ))}
+                </div>
+                <div className="heroActions">
+                  <button
+                    className="heroStart"
+                    onClick={() => openWorkout()}
+                    type="button"
+                  >
+                    Start this workout <span aria-hidden="true">→</span>
+                  </button>
+                  <button onClick={() => setView("plan")} type="button">
+                    View full plan
+                  </button>
+                </div>
+              </div>
+              <div className="readinessCard">
+                <span>PLAN MATCH</span>
+                <strong>92<small>%</small></strong>
+                <p>Right intensity for your current goal and schedule.</p>
+              </div>
+              <span className="heroWatermark" aria-hidden="true">LIFT</span>
+            </section>
 
             <div className="statGrid">
               <article className="statCard">

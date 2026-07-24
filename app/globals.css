@@ -394,6 +394,188 @@ input:focus-visible {
   margin-top: 10px;
 }
 
+.trainingHero {
+  background:
+    linear-gradient(90deg, rgba(12, 13, 11, .98) 0%, rgba(12, 13, 11, .9) 34%, rgba(12, 13, 11, .18) 76%, rgba(12, 13, 11, .28) 100%),
+    url("/training-dashboard-hero.png") center / cover no-repeat;
+  border: 1px solid #33352f;
+  border-radius: 14px;
+  color: #fff;
+  min-height: 350px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  padding: 35px 38px;
+  position: relative;
+}
+
+.trainingHero::after {
+  background:
+    linear-gradient(rgba(255, 255, 255, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  content: "";
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+.trainingHeroContent {
+  max-width: 560px;
+  position: relative;
+  z-index: 2;
+}
+
+.heroTag {
+  background: var(--orange);
+  border-radius: 999px;
+  display: inline-flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 7px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  padding: 8px 10px;
+}
+
+.trainingHeroContent > p {
+  color: #aaa9a3;
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  margin: 21px 0 8px;
+  text-transform: uppercase;
+}
+
+.trainingHero h2 {
+  font-size: clamp(39px, 5vw, 67px);
+  font-weight: 900;
+  letter-spacing: -.07em;
+  line-height: .9;
+  margin: 0;
+  max-width: 480px;
+  text-transform: uppercase;
+}
+
+.heroMeta {
+  display: flex;
+  gap: 22px;
+  margin-top: 20px;
+}
+
+.heroMeta > span {
+  color: #96978f;
+  display: flex;
+  flex-direction: column;
+  font-size: 8px;
+  gap: 2px;
+  text-transform: uppercase;
+}
+
+.heroMeta strong {
+  color: #fff;
+  font-size: 13px;
+  text-transform: none;
+}
+
+.heroFocus {
+  display: flex;
+  gap: 6px;
+  margin-top: 17px;
+}
+
+.heroFocus span {
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  color: #d8d8d2;
+  font-size: 8px;
+  padding: 6px 9px;
+}
+
+.heroActions {
+  display: flex;
+  gap: 9px;
+  margin-top: 23px;
+}
+
+.heroActions button {
+  background: rgba(255, 255, 255, .09);
+  border: 1px solid rgba(255, 255, 255, .24);
+  border-radius: 7px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 750;
+  min-height: 42px;
+  padding: 0 15px;
+}
+
+.heroActions .heroStart {
+  background: var(--orange);
+  border-color: var(--orange);
+  display: inline-flex;
+  gap: 20px;
+}
+
+.heroActions button:hover {
+  background: rgba(255, 255, 255, .18);
+}
+
+.heroActions .heroStart:hover {
+  background: #f57649;
+}
+
+.readinessCard {
+  backdrop-filter: blur(12px);
+  background: rgba(24, 25, 21, .72);
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 10px;
+  bottom: 25px;
+  padding: 14px 16px;
+  position: absolute;
+  right: 25px;
+  width: 150px;
+  z-index: 2;
+}
+
+.readinessCard > span {
+  color: #aaa9a3;
+  font-family: var(--font-mono), monospace;
+  font-size: 7px;
+  font-weight: 750;
+  letter-spacing: .12em;
+}
+
+.readinessCard strong {
+  display: block;
+  font-size: 36px;
+  letter-spacing: -.06em;
+  line-height: 1;
+  margin: 8px 0;
+}
+
+.readinessCard small {
+  color: var(--orange);
+  font-size: 18px;
+}
+
+.readinessCard p {
+  color: #aaa9a3;
+  font-size: 8px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.heroWatermark {
+  bottom: -42px;
+  color: rgba(255, 255, 255, .035);
+  font-size: 128px;
+  font-weight: 950;
+  letter-spacing: -.1em;
+  position: absolute;
+  right: 180px;
+  z-index: 1;
+}
+
 .statGrid {
   display: grid;
   gap: 13px;
@@ -1394,6 +1576,26 @@ input:focus-visible {
     font-size: 32px;
   }
 
+  .trainingHero {
+    background-position: 64% center;
+    min-height: 430px;
+    padding: 27px 24px;
+  }
+
+  .trainingHero h2 {
+    font-size: 45px;
+    max-width: 330px;
+  }
+
+  .readinessCard {
+    bottom: 20px;
+    right: 20px;
+  }
+
+  .heroWatermark {
+    display: none;
+  }
+
   .statGrid {
     grid-template-columns: 1fr;
   }
@@ -1510,6 +1712,34 @@ input:focus-visible {
 
   .pageTitle > button {
     width: 100%;
+  }
+
+  .trainingHero {
+    background:
+      linear-gradient(180deg, rgba(12, 13, 11, .96) 0%, rgba(12, 13, 11, .72) 48%, rgba(12, 13, 11, .45) 100%),
+      url("/training-dashboard-hero.png") 62% center / cover no-repeat;
+    min-height: 545px;
+  }
+
+  .heroMeta {
+    gap: 14px;
+  }
+
+  .heroFocus {
+    flex-wrap: wrap;
+  }
+
+  .heroActions {
+    align-items: stretch;
+    flex-direction: column;
+    max-width: 220px;
+  }
+
+  .readinessCard {
+    bottom: 17px;
+    left: 20px;
+    right: 20px;
+    width: auto;
   }
 
   .cardFooter {
