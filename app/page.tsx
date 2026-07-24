@@ -27,6 +27,9 @@ type Exercise = {
   name: string;
   sets: string;
   focus: string;
+  setCount?: string;
+  reps?: string;
+  rest?: string;
 };
 
 type Workout = {
@@ -166,7 +169,36 @@ const defaultProfile: Profile = {
 };
 
 function toExercises(items: string[][]): Exercise[] {
-  return items.map(([name, sets, focus]) => ({ name, sets, focus }));
+  return items.map(([name, sets, focus]) =>
+    hydrateExercise({ name, sets, focus }),
+  );
+}
+
+function hydrateExercise(exercise: Exercise): Exercise {
+  const [setPart, ...repParts] = exercise.sets.split("×");
+  return {
+    ...exercise,
+    setCount: exercise.setCount ?? (setPart.trim() || "3"),
+    reps: exercise.reps ?? (repParts.join("×").trim() || "10"),
+    rest: exercise.rest ?? "90 sec",
+  };
+}
+
+function exercisePrescription(exercise: Exercise) {
+  const hydrated = hydrateExercise(exercise);
+  return `${hydrated.setCount} × ${hydrated.reps}`;
+}
+
+function exercisesFromWorkouts(workouts: Workout[]) {
+  return Object.fromEntries(
+    dayLabels.map((day) => {
+      const workout = workouts.find((item) => item.day === day);
+      return [
+        day,
+        workout?.exercises.map(hydrateExercise) ?? [],
+      ];
+    }),
+  ) as Record<string, Exercise[]>;
 }
 
 function inferTrainingType(workout: Workout): TrainingType {
@@ -189,15 +221,28 @@ function scheduleFromWorkouts(workouts: Workout[]) {
   ) as Record<string, DayAssignment>;
 }
 
-function buildManualPlan(schedule: Record<string, DayAssignment>): Recommendation {
+function buildManualPlan(
+  schedule: Record<string, DayAssignment>,
+  dayExercises: Record<string, Exercise[]>,
+): Recommendation {
   const workouts = dayLabels.flatMap((day, index) => {
     const type = schedule[day] ?? "rest";
     if (type === "rest") return [];
+    const exercises = (dayExercises[day] ?? toExercises(exerciseLibrary[type]))
+      .filter((exercise) => exercise.name.trim())
+      .map((exercise) => {
+        const hydrated = hydrateExercise(exercise);
+        return {
+          ...hydrated,
+          name: hydrated.name.trim(),
+          sets: exercisePrescription(hydrated),
+        };
+      });
     return [{
       day,
       title: manualTitles[type],
       duration: manualDurations[type],
-      exercises: toExercises(exerciseLibrary[type]),
+      exercises,
       accent: manualAccents[index],
       type,
     }];
@@ -382,6 +427,10 @@ export default function Home() {
   const [weekSchedule, setWeekSchedule] = useState<Record<string, DayAssignment>>(
     () => scheduleFromWorkouts(buildRecommendation(defaultProfile).workouts),
   );
+  const [dayExercises, setDayExercises] = useState<Record<string, Exercise[]>>(
+    () => exercisesFromWorkouts(buildRecommendation(defaultProfile).workouts),
+  );
+  const [expandedDay, setExpandedDay] = useState("MON");
   const [selectedWorkout, setSelectedWorkout] = useState(0);
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
   const [entries, setEntries] = useState<
@@ -440,6 +489,7 @@ export default function Home() {
           const savedPlan = JSON.parse(data.profile.planJson) as Recommendation;
           setRecommendation(savedPlan);
           setWeekSchedule(scheduleFromWorkouts(savedPlan.workouts));
+          setDayExercises(exercisesFromWorkouts(savedPlan.workouts));
         }
         if (Array.isArray(data.logs)) setLogs(data.logs);
       })
@@ -490,9 +540,26 @@ export default function Home() {
   }
 
   function saveManualPlan() {
-    const next = buildManualPlan(weekSchedule);
+    const next = buildManualPlan(weekSchedule, dayExercises);
     if (next.workouts.length === 0) {
       setNotice("Choose at least one training day before saving.");
+      window.setTimeout(() => setNotice(""), 2600);
+      return;
+    }
+    if (next.workouts.some((item) => item.exercises.length === 0)) {
+      setNotice("Add at least one exercise to every training day.");
+      window.setTimeout(() => setNotice(""), 2600);
+      return;
+    }
+    if (
+      next.workouts.some((item) =>
+        item.exercises.some(
+          (exercise) =>
+            !exercise.setCount?.trim() || !exercise.reps?.trim(),
+        ),
+      )
+    ) {
+      setNotice("Add sets and reps for every exercise before saving.");
       window.setTimeout(() => setNotice(""), 2600);
       return;
     }
@@ -503,6 +570,63 @@ export default function Home() {
     setCompleted({});
     setEntries({});
     void savePlan(next, nextProfile);
+  }
+
+  function changeDayAssignment(day: string, assignment: DayAssignment) {
+    setWeekSchedule((current) => ({ ...current, [day]: assignment }));
+    setDayExercises((current) => ({
+      ...current,
+      [day]:
+        assignment === "rest"
+          ? []
+          : toExercises(exerciseLibrary[assignment]),
+    }));
+    if (assignment !== "rest") setExpandedDay(day);
+  }
+
+  function updateDayExercise(
+    day: string,
+    index: number,
+    field: "name" | "setCount" | "reps" | "rest",
+    value: string,
+  ) {
+    setDayExercises((current) => ({
+      ...current,
+      [day]: (current[day] ?? []).map((exercise, exerciseIndex) => {
+        if (exerciseIndex !== index) return exercise;
+        const next = { ...hydrateExercise(exercise), [field]: value };
+        return {
+          ...next,
+          sets: `${next.setCount} × ${next.reps}`,
+        };
+      }),
+    }));
+  }
+
+  function addDayExercise(day: string) {
+    setDayExercises((current) => ({
+      ...current,
+      [day]: [
+        ...(current[day] ?? []),
+        {
+          name: "",
+          focus: "Custom",
+          sets: "3 × 10",
+          setCount: "3",
+          reps: "10",
+          rest: "90 sec",
+        },
+      ],
+    }));
+  }
+
+  function removeDayExercise(day: string, index: number) {
+    setDayExercises((current) => ({
+      ...current,
+      [day]: (current[day] ?? []).filter(
+        (_, exerciseIndex) => exerciseIndex !== index,
+      ),
+    }));
   }
 
   async function logWorkout() {
@@ -878,45 +1002,171 @@ export default function Home() {
                 <div className="dayPlanner">
                   {dayLabels.map((day, index) => {
                     const assignment = weekSchedule[day] ?? "rest";
+                    const exercises = dayExercises[day] ?? [];
                     const option = trainingOptions.find(
                       (item) => item.value === assignment,
                     ) ?? trainingOptions[0];
                     const isRest = assignment === "rest";
+                    const isExpanded = expandedDay === day && !isRest;
                     return (
-                      <div className={isRest ? "dayPlanRow rest" : "dayPlanRow"} key={day}>
-                      <span
-                        className="dayPlanBadge"
-                        style={{ "--accent": manualAccents[index] } as React.CSSProperties}
-                      >
-                        <small>DAY {index + 1}</small>
-                        <strong>{day}</strong>
-                      </span>
-                      <span className="dayPlanCopy">
-                        <strong>{option.label}</strong>
-                        <small>{option.note}</small>
-                      </span>
-                      <label className="dayPlanSelect">
-                        <span className="srOnly">Training for {day}</span>
-                        <select
-                          value={assignment}
-                          onChange={(event) =>
-                            setWeekSchedule((current) => ({
-                              ...current,
-                              [day]: event.target.value as DayAssignment,
-                            }))
-                          }
-                        >
-                          {trainingOptions.map((item) => (
-                            <option key={item.value} value={item.value}>
-                              {item.label}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <span className="dayPlanStatus">
-                        {isRest ? "REST" : `${exerciseLibrary[assignment].length} EXERCISES`}
-                      </span>
-                    </div>
+                      <div className="dayPlanGroup" key={day}>
+                        <div className={isRest ? "dayPlanRow rest" : "dayPlanRow"}>
+                          <span
+                            className="dayPlanBadge"
+                            style={{ "--accent": manualAccents[index] } as React.CSSProperties}
+                          >
+                            <small>DAY {index + 1}</small>
+                            <strong>{day}</strong>
+                          </span>
+                          <span className="dayPlanCopy">
+                            <strong>{option.label}</strong>
+                            <small>
+                              {isRest
+                                ? option.note
+                                : `${exercises.length} exercises · ${option.note}`}
+                            </small>
+                          </span>
+                          <label className="dayPlanSelect">
+                            <span className="srOnly">Training for {day}</span>
+                            <select
+                              value={assignment}
+                              onChange={(event) =>
+                                changeDayAssignment(
+                                  day,
+                                  event.target.value as DayAssignment,
+                                )
+                              }
+                            >
+                              {trainingOptions.map((item) => (
+                                <option key={item.value} value={item.value}>
+                                  {item.label}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <button
+                            className="dayPlanAction"
+                            disabled={isRest}
+                            onClick={() =>
+                              setExpandedDay(isExpanded ? "" : day)
+                            }
+                            type="button"
+                          >
+                            {isRest
+                              ? "Rest"
+                              : isExpanded
+                                ? "Close"
+                                : "Edit exercises"}
+                          </button>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="exerciseEditor">
+                            <div className="exerciseEditorHead">
+                              <span>EXERCISE</span>
+                              <span>SETS</span>
+                              <span>REPS</span>
+                              <span>REST</span>
+                              <span />
+                            </div>
+                            {exercises.map((exercise, exerciseIndex) => {
+                              const hydrated = hydrateExercise(exercise);
+                              return (
+                                <div
+                                  className="exerciseEditRow"
+                                  key={`${day}-${exerciseIndex}`}
+                                >
+                                  <label className="exerciseNameField">
+                                    <span className="fieldCaption">Exercise</span>
+                                    <input
+                                      aria-label={`Exercise ${exerciseIndex + 1} name`}
+                                      onChange={(event) =>
+                                        updateDayExercise(
+                                          day,
+                                          exerciseIndex,
+                                          "name",
+                                          event.target.value,
+                                        )
+                                      }
+                                      placeholder="Exercise name"
+                                      value={hydrated.name}
+                                    />
+                                  </label>
+                                  <label>
+                                    <span className="fieldCaption">Sets</span>
+                                    <input
+                                      aria-label={`Sets for ${hydrated.name || `exercise ${exerciseIndex + 1}`}`}
+                                      inputMode="numeric"
+                                      onChange={(event) =>
+                                        updateDayExercise(
+                                          day,
+                                          exerciseIndex,
+                                          "setCount",
+                                          event.target.value,
+                                        )
+                                      }
+                                      value={hydrated.setCount}
+                                    />
+                                  </label>
+                                  <label>
+                                    <span className="fieldCaption">Reps</span>
+                                    <input
+                                      aria-label={`Reps for ${hydrated.name || `exercise ${exerciseIndex + 1}`}`}
+                                      onChange={(event) =>
+                                        updateDayExercise(
+                                          day,
+                                          exerciseIndex,
+                                          "reps",
+                                          event.target.value,
+                                        )
+                                      }
+                                      value={hydrated.reps}
+                                    />
+                                  </label>
+                                  <label className="restField">
+                                    <span className="fieldCaption">Rest</span>
+                                    <select
+                                      aria-label={`Rest time for ${hydrated.name || `exercise ${exerciseIndex + 1}`}`}
+                                      onChange={(event) =>
+                                        updateDayExercise(
+                                          day,
+                                          exerciseIndex,
+                                          "rest",
+                                          event.target.value,
+                                        )
+                                      }
+                                      value={hydrated.rest}
+                                    >
+                                      {["30 sec", "45 sec", "60 sec", "90 sec", "2 min", "3 min", "5 min"].map(
+                                        (rest) => (
+                                          <option key={rest}>{rest}</option>
+                                        ),
+                                      )}
+                                    </select>
+                                  </label>
+                                  <button
+                                    aria-label={`Remove ${hydrated.name || `exercise ${exerciseIndex + 1}`}`}
+                                    className="removeExercise"
+                                    onClick={() =>
+                                      removeDayExercise(day, exerciseIndex)
+                                    }
+                                    type="button"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              );
+                            })}
+                            <button
+                              className="addExercise"
+                              onClick={() => addDayExercise(day)}
+                              type="button"
+                            >
+                              <span aria-hidden="true">＋</span> Add exercise
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -1005,7 +1255,9 @@ export default function Home() {
                       </span>
                       <span className="loggerExercise">
                         <strong>{exercise.name}</strong>
-                        <small>{exercise.sets} · {exercise.focus}</small>
+                        <small>
+                          {exercisePrescription(exercise)} · {exercise.rest ?? "90 sec"} rest
+                        </small>
                       </span>
                       <label>
                         <span className="srOnly">Weight for {exercise.name}</span>
