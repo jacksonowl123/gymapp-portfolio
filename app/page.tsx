@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 type Goal = "Build muscle" | "Get stronger" | "Lose fat" | "Move better";
 type Experience = "Beginner" | "Intermediate" | "Advanced";
 type Equipment = "Full gym" | "Dumbbells only" | "Bodyweight";
+type View = "dashboard" | "plan" | "workout" | "progress";
 
 type Profile = {
   goal: Goal;
@@ -104,14 +105,20 @@ const exerciseLibrary = {
   ],
 } satisfies Record<string, string[][]>;
 
+const defaultProfile: Profile = {
+  goal: "Build muscle",
+  experience: "Intermediate",
+  days: 4,
+  equipment: "Full gym",
+};
+
 function toExercises(items: string[][]): Exercise[] {
   return items.map(([name, sets, focus]) => ({ name, sets, focus }));
 }
 
 function buildRecommendation(profile: Profile): Recommendation {
   const days = dayLabels.slice(0, profile.days);
-  const isBeginner = profile.experience === "Beginner";
-
+  const beginner = profile.experience === "Beginner";
   let split: Array<keyof typeof exerciseLibrary>;
   let name: string;
   let summary: string;
@@ -122,7 +129,7 @@ function buildRecommendation(profile: Profile): Recommendation {
         ? ["mobility", "full", "mobility"]
         : ["mobility", "upper", "mobility", "lower", "full"];
     name = "Move Well";
-    summary = "Strength, control, and mobility without rushing the basics.";
+    summary = "Strength, control and mobility without rushing the basics.";
   } else if (profile.goal === "Lose fat") {
     split =
       profile.days <= 3
@@ -130,85 +137,105 @@ function buildRecommendation(profile: Profile): Recommendation {
         : ["upper", "lower", "conditioning", "full", "conditioning"];
     name = "Strong & Lean";
     summary = "Full-body strength paired with short, repeatable conditioning.";
-  } else if (profile.days <= 3 || isBeginner) {
+  } else if (profile.days <= 3 || beginner) {
     split = ["full", "full", "full"];
-    name = profile.goal === "Get stronger" ? "Foundation Strength" : "Full Body Build";
+    name =
+      profile.goal === "Get stronger"
+        ? "Foundation Strength"
+        : "Full Body Build";
     summary = "Frequent full-body practice with enough recovery to progress.";
   } else if (profile.days === 4) {
     split = ["upper", "lower", "upper", "lower"];
-    name = profile.goal === "Get stronger" ? "Upper / Lower Strength" : "Upper / Lower Build";
-    summary = "A balanced four-day split with focused work and simple recovery.";
+    name =
+      profile.goal === "Get stronger"
+        ? "Upper / Lower Strength"
+        : "Upper / Lower Build";
+    summary = "A balanced four-day split with focused work and clear recovery.";
   } else {
     split = ["push", "pull", "lower", "upper", "conditioning"];
     name = profile.goal === "Get stronger" ? "Power Five" : "Build Five";
-    summary = "Higher-frequency training with each session given one clear job.";
+    summary = "Higher-frequency training with one clear job for each session.";
   }
 
-  const activeSplit = split.slice(0, profile.days);
-  const accents = ["#f36b35", "#d6e56f", "#7fb6a4", "#e0b2d3", "#79a8d8"];
-  const workouts = activeSplit.map((type, index) => {
-    const titleMap = {
-      upper: index > 1 ? "Upper · Volume" : "Upper · Strength",
-      lower: index > 1 ? "Lower · Volume" : "Lower · Strength",
-      push: "Push · Chest & shoulders",
-      pull: "Pull · Back & arms",
-      full: `Full body · ${String.fromCharCode(65 + index)}`,
-      conditioning: "Conditioning · Engine",
-      mobility: "Mobility · Reset",
-    };
+  const titles = {
+    upper: ["Upper strength", "Upper volume"],
+    lower: ["Lower strength", "Lower volume"],
+    push: ["Push", "Push"],
+    pull: ["Pull", "Pull"],
+    full: ["Full body A", "Full body B"],
+    conditioning: ["Conditioning", "Conditioning"],
+    mobility: ["Mobility reset", "Mobility reset"],
+  };
+  const uses = new Map<string, number>();
+  const accents = ["#ec6335", "#a6c76e", "#668fa0", "#c98c9b", "#8976b8"];
 
+  const workouts = split.slice(0, profile.days).map((type, index) => {
+    const useIndex = uses.get(type) ?? 0;
+    uses.set(type, useIndex + 1);
     return {
       day: days[index],
-      title: titleMap[type],
-      duration: isBeginner ? 45 : type === "conditioning" ? 38 : 55,
+      title: titles[type][Math.min(useIndex, 1)],
+      duration: beginner ? 45 : type === "conditioning" ? 38 : 55,
       exercises: toExercises(exerciseLibrary[type]),
-      accent: accents[index % accents.length],
+      accent: accents[index],
     };
   });
 
-  const equipmentNote =
+  const equipmentReason =
     profile.equipment === "Full gym"
-      ? "You have full equipment access, so the plan uses stable compound lifts and simple accessories."
+      ? "Your full-gym access lets us combine stable compound lifts with simple accessories."
       : profile.equipment === "Dumbbells only"
-        ? "Every movement can be completed with dumbbells and a bench; swap cable work for supported dumbbell rows."
-        : "Use controlled tempo and harder variations to keep bodyweight sessions challenging.";
+        ? "Every session can be completed with dumbbells and a bench."
+        : "Controlled tempo and progressive variations keep bodyweight work challenging.";
 
   return {
     name,
     summary,
-    reason: `${profile.days} days fits your week without creating unnecessary fatigue. ${equipmentNote}`,
+    reason: `${profile.days} training days gives you enough work without unnecessary fatigue. ${equipmentReason}`,
     workouts,
   };
 }
 
-const defaultProfile: Profile = {
-  goal: "Build muscle",
-  experience: "Intermediate",
-  days: 4,
-  equipment: "Full gym",
-};
-
-function formatLogDate(value: string) {
+function formatDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Recently";
   return date.toLocaleDateString("en", {
-    month: "short",
     day: "numeric",
+    month: "short",
   });
 }
 
+function EmptyActivity({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="emptyActivity">
+      <span className="emptyIcon">✓</span>
+      <div>
+        <strong>No workouts logged yet</strong>
+        <p>Your completed sessions will appear here.</p>
+      </div>
+      <button className="linkButton" onClick={onStart} type="button">
+        Start workout
+      </button>
+    </div>
+  );
+}
+
 export default function Home() {
+  const [view, setView] = useState<View>("dashboard");
   const [profile, setProfile] = useState<Profile>(defaultProfile);
   const [recommendation, setRecommendation] = useState<Recommendation>(() =>
     buildRecommendation(defaultProfile),
   );
   const [selectedWorkout, setSelectedWorkout] = useState(0);
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
+  const [entries, setEntries] = useState<
+    Record<string, { weight: string; reps: string }>
+  >({});
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [profileId, setProfileId] = useState("");
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">(
-    "idle",
-  );
+  const [today, setToday] = useState("Today");
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
 
   const workout =
     recommendation.workouts[selectedWorkout] ?? recommendation.workouts[0];
@@ -216,8 +243,17 @@ export default function Home() {
   const weeklyTarget = recommendation.workouts.length;
   const weeklyDone = Math.min(logs.length, weeklyTarget);
   const weeklyPercent = Math.round((weeklyDone / weeklyTarget) * 100);
+  const totalMinutes = logs.reduce((sum, log) => sum + log.duration, 0);
 
   useEffect(() => {
+    setToday(
+      new Date().toLocaleDateString("en", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      }),
+    );
+
     const existing = window.localStorage.getItem("liftly-profile-id");
     const id = existing ?? crypto.randomUUID();
     window.localStorage.setItem("liftly-profile-id", id);
@@ -241,19 +277,31 @@ export default function Home() {
         }
         if (Array.isArray(data.logs)) setLogs(data.logs);
       })
-      .catch(() => {
-        // The app remains fully usable if persistence is temporarily unavailable.
-      });
+      .catch(() => setNotice("Working offline — changes may not be saved."));
   }, []);
 
-  const selectedDays = useMemo(
-    () => new Set(recommendation.workouts.map((item) => item.day)),
-    [recommendation],
-  );
+  const activityBars = useMemo(() => {
+    const source = logs.slice(0, 7).reverse();
+    return Array.from({ length: 7 }, (_, index) => {
+      const log = source[index];
+      return log
+        ? Math.max(28, Math.round((log.exercisesCompleted / log.totalExercises) * 100))
+        : index === 6
+          ? 12
+          : 6;
+    });
+  }, [logs]);
+
+  function openWorkout(index = selectedWorkout) {
+    setSelectedWorkout(index);
+    setCompleted({});
+    setEntries({});
+    setView("workout");
+  }
 
   async function savePlan(next: Recommendation) {
     if (!profileId) return;
-    setSaveState("saving");
+    setSaving(true);
     try {
       const response = await fetch("/api/fitness", {
         method: "POST",
@@ -266,10 +314,12 @@ export default function Home() {
         }),
       });
       if (!response.ok) throw new Error("Save failed");
-      setSaveState("saved");
-      window.setTimeout(() => setSaveState("idle"), 2200);
+      setNotice("Plan saved");
     } catch {
-      setSaveState("error");
+      setNotice("Could not save the plan. Please try again.");
+    } finally {
+      setSaving(false);
+      window.setTimeout(() => setNotice(""), 2600);
     }
   }
 
@@ -278,13 +328,13 @@ export default function Home() {
     setRecommendation(next);
     setSelectedWorkout(0);
     setCompleted({});
+    setEntries({});
     void savePlan(next);
-    document.getElementById("plan")?.scrollIntoView({ behavior: "smooth" });
   }
 
   async function logWorkout() {
     if (!profileId || completedCount === 0) return;
-    setSaveState("saving");
+    setSaving(true);
     try {
       const response = await fetch("/api/fitness", {
         method: "POST",
@@ -300,375 +350,670 @@ export default function Home() {
       });
       if (!response.ok) throw new Error("Log failed");
       const data = await response.json();
-      setLogs((current) => [data.log, ...current].slice(0, 8));
+      setLogs((current) => [data.log, ...current].slice(0, 20));
       setCompleted({});
-      setSaveState("saved");
-      window.setTimeout(() => setSaveState("idle"), 2200);
+      setEntries({});
+      setNotice("Workout saved to your history");
+      setView("progress");
     } catch {
-      setSaveState("error");
+      setNotice("Could not save this workout. Please try again.");
+    } finally {
+      setSaving(false);
+      window.setTimeout(() => setNotice(""), 2800);
     }
   }
 
+  const navItems: Array<{ id: View; label: string; icon: string }> = [
+    { id: "dashboard", label: "Dashboard", icon: "⌂" },
+    { id: "plan", label: "My plan", icon: "▦" },
+    { id: "workout", label: "Log workout", icon: "+" },
+    { id: "progress", label: "Progress", icon: "◔" },
+  ];
+
   return (
-    <main>
-      <header className="topbar">
-        <a className="brand" href="#top" aria-label="Liftly home">
+    <main className="appShell">
+      <aside className="sidebar">
+        <button
+          className="brand"
+          onClick={() => setView("dashboard")}
+          type="button"
+        >
           <span className="brandGlyph" aria-hidden="true" />
           LIFTLY
-        </a>
-        <nav aria-label="Primary navigation">
-          <a href="#today">Today</a>
-          <a href="#plan">My plan</a>
-          <a href="#coach">Coach</a>
-        </nav>
-        <a className="profilePill" href="#coach">
-          <span>JL</span>
-          <span className="profileText">
-            <strong>My training</strong>
-            <small>{recommendation.name}</small>
-          </span>
-          <span aria-hidden="true">⌄</span>
-        </a>
-      </header>
+        </button>
 
-      <section className="hero" id="top">
-        <div className="heroCopy">
-          <p className="eyebrow">
-            <span aria-hidden="true">✦</span> YOUR ADAPTIVE TRAINING PLAN
-          </p>
-          <h1>
-            Train smarter.
-            <br />
-            <em>Show up stronger.</em>
-          </h1>
-          <p className="heroIntro">
-            A plan built around your goal, your schedule, and the equipment you
-            actually have—then adjusted as you log the work.
-          </p>
-          <div className="heroActions">
-            <a className="primaryButton" href="#coach">
-              Tune my plan <span aria-hidden="true">↗</span>
-            </a>
-            <a className="textButton" href="#today">
-              Start today’s workout <span aria-hidden="true">↓</span>
-            </a>
-          </div>
-        </div>
-
-        <div className="heroVisual" aria-label="Weekly training overview">
-          <div className="orangeOrb" aria-hidden="true" />
-          <div className="weekCard">
-            <div className="cardTopline">
-              <span>THIS WEEK</span>
-              <strong>{weeklyDone} / {weeklyTarget} sessions</strong>
-            </div>
-            <div className="weekBars" aria-label={`${weeklyPercent}% of weekly plan complete`}>
-              {recommendation.workouts.map((item, index) => (
-                <span
-                  className={index < weeklyDone ? "filled" : ""}
-                  key={item.day}
-                />
-              ))}
-            </div>
-            <p>
-              <strong>{weeklyPercent}%</strong>
-              <span>Keep the rhythm.<br />One session at a time.</span>
-            </p>
-          </div>
-          <div className="nextCard">
-            <span className="smallLabel">UP NEXT · {workout.day}</span>
-            <h2>{workout.title}</h2>
-            <div>
-              <span>{workout.duration} min</span>
-              <span>{workout.exercises.length} exercises</span>
-            </div>
-            <a href="#today" aria-label={`Open ${workout.title}`}>↗</a>
-          </div>
-          <p className="sideCaption">PLAN · TRAIN · TRACK · ADAPT</p>
-        </div>
-      </section>
-
-      <section className="dashboard" id="today">
-        <div className="sectionHeader">
-          <div>
-            <p className="sectionKicker">01 · TODAY</p>
-            <h2>Make today count.</h2>
-          </div>
-          <div className="dateBadge">
-            <span>{workout.day}</span>
-            <strong>{workout.duration}</strong>
-            <small>MINUTES</small>
-          </div>
-        </div>
-
-        <div className="trainingGrid">
-          <article className="workoutPanel">
-            <div className="workoutHeading">
-              <div>
-                <span className="smallLabel">TODAY’S SESSION</span>
-                <h3>{workout.title}</h3>
-              </div>
-              <span className="focusPill">{profile.goal}</span>
-            </div>
-
-            <div className="exerciseList">
-              {workout.exercises.map((exercise, index) => {
-                const key = `${workout.title}-${exercise.name}`;
-                const isDone = Boolean(completed[key]);
-                return (
-                  <label className={isDone ? "exerciseRow done" : "exerciseRow"} key={key}>
-                    <input
-                      checked={isDone}
-                      onChange={(event) =>
-                        setCompleted((current) => ({
-                          ...current,
-                          [key]: event.target.checked,
-                        }))
-                      }
-                      type="checkbox"
-                    />
-                    <span className="checkmark" aria-hidden="true">
-                      {isDone ? "✓" : String(index + 1).padStart(2, "0")}
-                    </span>
-                    <span className="exerciseName">
-                      <strong>{exercise.name}</strong>
-                      <small>{exercise.focus}</small>
-                    </span>
-                    <span className="exerciseSets">{exercise.sets}</span>
-                  </label>
-                );
-              })}
-            </div>
-
-            <div className="workoutFooter">
-              <p>
-                <strong>{completedCount}/{workout.exercises.length}</strong>
-                exercises checked
-              </p>
-              <button
-                className="primaryButton"
-                disabled={completedCount === 0 || saveState === "saving"}
-                onClick={logWorkout}
-                type="button"
-              >
-                {saveState === "saving" ? "Saving…" : "Finish & log workout"}
-                <span aria-hidden="true">✓</span>
-              </button>
-            </div>
-          </article>
-
-          <aside className="progressPanel">
-            <span className="smallLabel">WEEKLY PROGRESS</span>
-            <div
-              className="progressRing"
-              style={{ "--progress": `${weeklyPercent * 3.6}deg` } as React.CSSProperties}
-            >
-              <div>
-                <strong>{weeklyPercent}%</strong>
-                <span>complete</span>
-              </div>
-            </div>
-            <div className="progressStats">
-              <p><strong>{weeklyDone}</strong><span>sessions</span></p>
-              <p><strong>{logs.reduce((sum, log) => sum + log.duration, 0)}</strong><span>total min</span></p>
-            </div>
-            <p className="progressMessage">
-              {weeklyDone === 0
-                ? "Your first check-in starts the streak."
-                : weeklyDone < weeklyTarget
-                  ? "Momentum is building. Keep your next session easy to start."
-                  : "Plan complete. Recovery is part of the work."}
-            </p>
-          </aside>
-        </div>
-      </section>
-
-      <section className="planSection" id="plan">
-        <div className="sectionHeader lightHeader">
-          <div>
-            <p className="sectionKicker">02 · YOUR WEEK</p>
-            <h2>{recommendation.name}</h2>
-          </div>
-          <p className="sectionDescription">{recommendation.summary}</p>
-        </div>
-
-        <div className="planGrid">
-          {recommendation.workouts.map((item, index) => (
+        <nav className="appNav" aria-label="Application navigation">
+          <span className="navLabel">WORKSPACE</span>
+          {navItems.map((item) => (
             <button
-              className={selectedWorkout === index ? "planDay active" : "planDay"}
-              key={`${item.day}-${item.title}`}
-              onClick={() => {
-                setSelectedWorkout(index);
-                setCompleted({});
-              }}
-              style={{ "--day-accent": item.accent } as React.CSSProperties}
+              aria-current={view === item.id ? "page" : undefined}
+              className={view === item.id ? "active" : ""}
+              key={item.id}
+              onClick={() => setView(item.id)}
               type="button"
             >
-              <span className="planDayTop">
-                <strong>{item.day}</strong>
-                <span>{index === selectedWorkout ? "UP NEXT" : `${item.duration} MIN`}</span>
+              <span className="navIcon" aria-hidden="true">
+                {item.icon}
               </span>
-              <span className="planDayTitle">{item.title}</span>
-              <span className="planDayMeta">
-                <span>{item.exercises.length} exercises</span>
-                <span aria-hidden="true">↗</span>
-              </span>
+              {item.label}
+              {item.id === "workout" && (
+                <span className="navBadge">{completedCount}</span>
+              )}
             </button>
           ))}
-          {dayLabels
-            .filter((day) => !selectedDays.has(day))
-            .slice(0, Math.max(0, 5 - recommendation.workouts.length))
-            .map((day) => (
-              <div className="planDay rest" key={day}>
-                <span className="planDayTop"><strong>{day}</strong><span>REST</span></span>
-                <span className="planDayTitle">Recover well</span>
-                <span className="planDayMeta"><span>Walk · eat · sleep</span></span>
+        </nav>
+
+        <div className="sidePlan">
+          <span className="sidePlanLabel">CURRENT PLAN</span>
+          <strong>{recommendation.name}</strong>
+          <span>{weeklyDone} of {weeklyTarget} this week</span>
+          <div className="miniProgress">
+            <span style={{ width: `${weeklyPercent}%` }} />
+          </div>
+        </div>
+
+        <button className="userCard" type="button">
+          <span className="avatar">JL</span>
+          <span>
+            <strong>My profile</strong>
+            <small>{profile.experience}</small>
+          </span>
+          <span aria-hidden="true">•••</span>
+        </button>
+      </aside>
+
+      <section className="appMain">
+        <header className="appHeader">
+          <div>
+            <span className="mobileBrand">
+              <span className="brandGlyph" aria-hidden="true" /> LIFTLY
+            </span>
+            <p>{today}</p>
+          </div>
+          <div className="headerActions">
+            <button
+              className="headerIcon"
+              aria-label="Notifications"
+              type="button"
+            >
+              ◌
+              <span />
+            </button>
+            <button
+              className="primaryAction"
+              onClick={() => openWorkout()}
+              type="button"
+            >
+              <span aria-hidden="true">＋</span> Start workout
+            </button>
+          </div>
+        </header>
+
+        {view === "dashboard" && (
+          <div className="appPage">
+            <div className="pageTitle">
+              <div>
+                <p className="eyebrow">OVERVIEW</p>
+                <h1>Welcome back.</h1>
+                <span>Your next session is ready when you are.</span>
               </div>
-            ))}
-        </div>
-      </section>
-
-      <section className="coachSection" id="coach">
-        <div className="coachIntro">
-          <p className="sectionKicker">03 · LIFTLY COACH</p>
-          <h2>A plan that fits <em>real life.</em></h2>
-          <p>
-            Tell us what you’re training for. Liftly will choose a practical
-            weekly structure—then you can tune it whenever life changes.
-          </p>
-          <div className="coachNote">
-            <span aria-hidden="true">✦</span>
-            <p>
-              <strong>Why this plan?</strong>
-              {recommendation.reason}
-            </p>
-          </div>
-        </div>
-
-        <div className="quizCard">
-          <div className="quizHeader">
-            <div>
-              <span className="smallLabel">PERSONALISE YOUR PLAN</span>
-              <h3>What are you working toward?</h3>
+              <button
+                className="secondaryAction"
+                onClick={() => setView("plan")}
+                type="button"
+              >
+                Edit plan
+              </button>
             </div>
-            <span className="quizStep">4 inputs</span>
-          </div>
 
-          <fieldset className="goalOptions">
-            <legend>Primary goal</legend>
-            {goals.map((goal) => (
-              <button
-                aria-pressed={profile.goal === goal}
-                className={profile.goal === goal ? "selected" : ""}
-                key={goal}
-                onClick={() => setProfile((current) => ({ ...current, goal }))}
-                type="button"
-              >
-                {goal}
-              </button>
-            ))}
-          </fieldset>
-
-          <div className="formGrid">
-            <label>
-              <span>EXPERIENCE</span>
-              <select
-                value={profile.experience}
-                onChange={(event) =>
-                  setProfile((current) => ({
-                    ...current,
-                    experience: event.target.value as Experience,
-                  }))
-                }
-              >
-                <option>Beginner</option>
-                <option>Intermediate</option>
-                <option>Advanced</option>
-              </select>
-            </label>
-            <label>
-              <span>EQUIPMENT</span>
-              <select
-                value={profile.equipment}
-                onChange={(event) =>
-                  setProfile((current) => ({
-                    ...current,
-                    equipment: event.target.value as Equipment,
-                  }))
-                }
-              >
-                <option>Full gym</option>
-                <option>Dumbbells only</option>
-                <option>Bodyweight</option>
-              </select>
-            </label>
-          </div>
-
-          <fieldset className="dayOptions">
-            <legend>DAYS PER WEEK</legend>
-            {[2, 3, 4, 5].map((day) => (
-              <button
-                aria-pressed={profile.days === day}
-                className={profile.days === day ? "selected" : ""}
-                key={day}
-                onClick={() => setProfile((current) => ({ ...current, days: day }))}
-                type="button"
-              >
-                <strong>{day}</strong>
-                <span>days</span>
-              </button>
-            ))}
-          </fieldset>
-
-          <button className="generateButton" onClick={generatePlan} type="button">
-            Build my recommended plan <span aria-hidden="true">→</span>
-          </button>
-          <p className="safetyNote">
-            General fitness guidance only. If you have pain, an injury, or a
-            medical condition, check with a qualified health professional first.
-          </p>
-        </div>
-      </section>
-
-      <section className="historySection">
-        <div>
-          <p className="sectionKicker">04 · YOUR LOG</p>
-          <h2>Proof of the work.</h2>
-        </div>
-        <div className="historyList">
-          {logs.length > 0 ? (
-            logs.slice(0, 4).map((log) => (
-              <article key={log.id}>
-                <span className="historyDate">{formatLogDate(log.performedAt)}</span>
+            <div className="statGrid">
+              <article className="statCard">
+                <span className="statIcon orange">◔</span>
                 <div>
-                  <strong>{log.workoutName}</strong>
-                  <small>{log.exercisesCompleted}/{log.totalExercises} exercises · {log.duration} min</small>
+                  <small>WEEKLY PROGRESS</small>
+                  <strong>{weeklyDone} / {weeklyTarget}</strong>
+                  <span>sessions completed</span>
                 </div>
-                <span className="historyCheck" aria-label="Workout logged">✓</span>
+                <div className="statProgress">
+                  <span style={{ width: `${weeklyPercent}%` }} />
+                </div>
               </article>
-            ))
-          ) : (
-            <div className="emptyHistory">
-              <span>01</span>
-              <p><strong>Your log starts here.</strong> Check an exercise above, then finish the workout to record it.</p>
+              <article className="statCard">
+                <span className="statIcon green">⌁</span>
+                <div>
+                  <small>TRAINING TIME</small>
+                  <strong>{totalMinutes}</strong>
+                  <span>minutes logged</span>
+                </div>
+                <span className="statTrend">This week</span>
+              </article>
+              <article className="statCard">
+                <span className="statIcon blue">⌁</span>
+                <div>
+                  <small>CURRENT GOAL</small>
+                  <strong className="goalStat">{profile.goal}</strong>
+                  <span>{profile.days} training days</span>
+                </div>
+                <button
+                  className="miniLink"
+                  onClick={() => setView("plan")}
+                  type="button"
+                >
+                  Change
+                </button>
+              </article>
             </div>
-          )}
-        </div>
+
+            <div className="dashboardGrid">
+              <article className="todayCard">
+                <div className="cardHeader">
+                  <div>
+                    <p className="eyebrow">TODAY’S TRAINING</p>
+                    <h2>{workout.title}</h2>
+                  </div>
+                  <span className="durationBadge">{workout.duration} min</span>
+                </div>
+                <div className="exercisePreview">
+                  {workout.exercises.slice(0, 4).map((exercise, index) => (
+                    <div key={exercise.name}>
+                      <span className="exerciseNumber">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span>
+                        <strong>{exercise.name}</strong>
+                        <small>{exercise.focus}</small>
+                      </span>
+                      <span className="sets">{exercise.sets}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="cardFooter">
+                  <span>
+                    + {Math.max(0, workout.exercises.length - 4)} more exercise
+                  </span>
+                  <button
+                    className="primaryAction"
+                    onClick={() => openWorkout()}
+                    type="button"
+                  >
+                    Begin session <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+              </article>
+
+              <aside className="weekCard">
+                <div className="cardHeader compact">
+                  <div>
+                    <p className="eyebrow">YOUR WEEK</p>
+                    <h2>{recommendation.name}</h2>
+                  </div>
+                  <button
+                    className="moreButton"
+                    onClick={() => setView("plan")}
+                    type="button"
+                  >
+                    •••
+                  </button>
+                </div>
+                <div className="weekList">
+                  {recommendation.workouts.map((item, index) => (
+                    <button
+                      className={index === selectedWorkout ? "selected" : ""}
+                      key={`${item.day}-${item.title}`}
+                      onClick={() => openWorkout(index)}
+                      type="button"
+                    >
+                      <span
+                        className="daySquare"
+                        style={{ "--accent": item.accent } as React.CSSProperties}
+                      >
+                        {item.day}
+                      </span>
+                      <span>
+                        <strong>{item.title}</strong>
+                        <small>{item.exercises.length} exercises · {item.duration} min</small>
+                      </span>
+                      <span aria-hidden="true">›</span>
+                    </button>
+                  ))}
+                </div>
+              </aside>
+            </div>
+
+            <div className="lowerGrid">
+              <article className="insightCard">
+                <div className="coachMark">L</div>
+                <div>
+                  <p className="eyebrow">COACH NOTE</p>
+                  <h3>Your plan is balanced for recovery.</h3>
+                  <p>{recommendation.reason}</p>
+                </div>
+                <button onClick={() => setView("plan")} type="button">
+                  Review plan <span aria-hidden="true">→</span>
+                </button>
+              </article>
+              <article className="activityCard">
+                <div className="cardHeader compact">
+                  <div>
+                    <p className="eyebrow">RECENT ACTIVITY</p>
+                    <h3>Workout history</h3>
+                  </div>
+                  <button
+                    className="miniLink"
+                    onClick={() => setView("progress")}
+                    type="button"
+                  >
+                    View all
+                  </button>
+                </div>
+                {logs.length ? (
+                  <div className="activityRows">
+                    {logs.slice(0, 3).map((log) => (
+                      <div key={log.id}>
+                        <span className="activityCheck">✓</span>
+                        <span>
+                          <strong>{log.workoutName}</strong>
+                          <small>{formatDate(log.performedAt)}</small>
+                        </span>
+                        <span>{log.duration} min</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyActivity onStart={() => openWorkout()} />
+                )}
+              </article>
+            </div>
+          </div>
+        )}
+
+        {view === "plan" && (
+          <div className="appPage">
+            <div className="pageTitle">
+              <div>
+                <p className="eyebrow">PROGRAM</p>
+                <h1>My training plan</h1>
+                <span>{recommendation.summary}</span>
+              </div>
+              <button
+                className="primaryAction"
+                disabled={saving}
+                onClick={generatePlan}
+                type="button"
+              >
+                {saving ? "Saving…" : "Update plan"}
+              </button>
+            </div>
+
+            <div className="planWorkspace">
+              <section className="planBoard">
+                <div className="panelTitle">
+                  <div>
+                    <p className="eyebrow">WEEKLY SCHEDULE</p>
+                    <h2>{recommendation.name}</h2>
+                  </div>
+                  <span>{weeklyTarget} days / week</span>
+                </div>
+                <div className="planRows">
+                  {recommendation.workouts.map((item, index) => (
+                    <button
+                      key={`${item.day}-${item.title}`}
+                      onClick={() => openWorkout(index)}
+                      type="button"
+                    >
+                      <span
+                        className="planIndex"
+                        style={{ "--accent": item.accent } as React.CSSProperties}
+                      >
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="planInfo">
+                        <small>{item.day}</small>
+                        <strong>{item.title}</strong>
+                      </span>
+                      <span className="planMeta">
+                        {item.exercises.length} exercises
+                      </span>
+                      <span className="planMeta">{item.duration} min</span>
+                      <span className="openArrow" aria-hidden="true">→</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <aside className="settingsPanel">
+                <div className="panelTitle">
+                  <div>
+                    <p className="eyebrow">PLAN SETTINGS</p>
+                    <h2>Personalise</h2>
+                  </div>
+                </div>
+                <label>
+                  <span>Primary goal</span>
+                  <select
+                    value={profile.goal}
+                    onChange={(event) =>
+                      setProfile((current) => ({
+                        ...current,
+                        goal: event.target.value as Goal,
+                      }))
+                    }
+                  >
+                    {goals.map((goal) => (
+                      <option key={goal}>{goal}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>Experience level</span>
+                  <select
+                    value={profile.experience}
+                    onChange={(event) =>
+                      setProfile((current) => ({
+                        ...current,
+                        experience: event.target.value as Experience,
+                      }))
+                    }
+                  >
+                    <option>Beginner</option>
+                    <option>Intermediate</option>
+                    <option>Advanced</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Available equipment</span>
+                  <select
+                    value={profile.equipment}
+                    onChange={(event) =>
+                      setProfile((current) => ({
+                        ...current,
+                        equipment: event.target.value as Equipment,
+                      }))
+                    }
+                  >
+                    <option>Full gym</option>
+                    <option>Dumbbells only</option>
+                    <option>Bodyweight</option>
+                  </select>
+                </label>
+                <fieldset>
+                  <legend>Training days</legend>
+                  <div className="dayChoice">
+                    {[2, 3, 4, 5].map((day) => (
+                      <button
+                        aria-pressed={profile.days === day}
+                        className={profile.days === day ? "active" : ""}
+                        key={day}
+                        onClick={() =>
+                          setProfile((current) => ({ ...current, days: day }))
+                        }
+                        type="button"
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+                <button
+                  className="fullAction"
+                  disabled={saving}
+                  onClick={generatePlan}
+                  type="button"
+                >
+                  {saving ? "Building your plan…" : "Build recommended plan"}
+                </button>
+                <p className="safety">
+                  General fitness guidance only. Consult a qualified professional
+                  if you have pain, an injury or a medical condition.
+                </p>
+              </aside>
+            </div>
+          </div>
+        )}
+
+        {view === "workout" && (
+          <div className="appPage workoutPage">
+            <div className="pageTitle workoutTitle">
+              <div>
+                <button
+                  className="backButton"
+                  onClick={() => setView("dashboard")}
+                  type="button"
+                >
+                  ← Dashboard
+                </button>
+                <p className="eyebrow">ACTIVE SESSION · {workout.day}</p>
+                <h1>{workout.title}</h1>
+                <span>{workout.duration} min · {workout.exercises.length} exercises</span>
+              </div>
+              <div className="sessionProgress">
+                <strong>{completedCount}/{workout.exercises.length}</strong>
+                <span>completed</span>
+              </div>
+            </div>
+
+            <div className="loggerLayout">
+              <section className="loggerPanel">
+                <div className="loggerHeader">
+                  <span>EXERCISE</span>
+                  <span>WEIGHT</span>
+                  <span>REPS</span>
+                  <span>DONE</span>
+                </div>
+                {workout.exercises.map((exercise, index) => {
+                  const key = `${workout.title}-${exercise.name}`;
+                  const isDone = Boolean(completed[key]);
+                  const entry = entries[key] ?? { weight: "", reps: "" };
+                  return (
+                    <div className={isDone ? "loggerRow done" : "loggerRow"} key={key}>
+                      <span className="exerciseNumber">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="loggerExercise">
+                        <strong>{exercise.name}</strong>
+                        <small>{exercise.sets} · {exercise.focus}</small>
+                      </span>
+                      <label>
+                        <span className="srOnly">Weight for {exercise.name}</span>
+                        <input
+                          inputMode="decimal"
+                          onChange={(event) =>
+                            setEntries((current) => ({
+                              ...current,
+                              [key]: { ...entry, weight: event.target.value },
+                            }))
+                          }
+                          placeholder="kg"
+                          value={entry.weight}
+                        />
+                      </label>
+                      <label>
+                        <span className="srOnly">Reps for {exercise.name}</span>
+                        <input
+                          inputMode="numeric"
+                          onChange={(event) =>
+                            setEntries((current) => ({
+                              ...current,
+                              [key]: { ...entry, reps: event.target.value },
+                            }))
+                          }
+                          placeholder="reps"
+                          value={entry.reps}
+                        />
+                      </label>
+                      <label className="doneControl">
+                        <input
+                          checked={isDone}
+                          onChange={(event) =>
+                            setCompleted((current) => ({
+                              ...current,
+                              [key]: event.target.checked,
+                            }))
+                          }
+                          type="checkbox"
+                        />
+                        <span>{isDone ? "✓" : ""}</span>
+                      </label>
+                    </div>
+                  );
+                })}
+                <div className="loggerFooter">
+                  <button
+                    className="secondaryAction"
+                    onClick={() => {
+                      setCompleted({});
+                      setEntries({});
+                    }}
+                    type="button"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    className="primaryAction"
+                    disabled={completedCount === 0 || saving}
+                    onClick={logWorkout}
+                    type="button"
+                  >
+                    {saving ? "Saving…" : "Finish and save workout"}
+                  </button>
+                </div>
+              </section>
+
+              <aside className="sessionAside">
+                <div className="sessionSummary">
+                  <p className="eyebrow">SESSION SUMMARY</p>
+                  <div
+                    className="sessionRing"
+                    style={{
+                      "--progress": `${(completedCount / workout.exercises.length) * 360}deg`,
+                    } as React.CSSProperties}
+                  >
+                    <span>{Math.round((completedCount / workout.exercises.length) * 100)}%</span>
+                  </div>
+                  <div className="summaryRows">
+                    <p><span>Duration</span><strong>{workout.duration} min</strong></p>
+                    <p><span>Completed</span><strong>{completedCount}</strong></p>
+                    <p><span>Remaining</span><strong>{workout.exercises.length - completedCount}</strong></p>
+                  </div>
+                </div>
+                <div className="tipCard">
+                  <span>TIP</span>
+                  <p>Leave 1–2 good reps in reserve. Clean, repeatable sets build progress.</p>
+                </div>
+              </aside>
+            </div>
+          </div>
+        )}
+
+        {view === "progress" && (
+          <div className="appPage">
+            <div className="pageTitle">
+              <div>
+                <p className="eyebrow">HISTORY</p>
+                <h1>Your progress</h1>
+                <span>Every completed session adds to the bigger picture.</span>
+              </div>
+              <button
+                className="primaryAction"
+                onClick={() => openWorkout()}
+                type="button"
+              >
+                Log a workout
+              </button>
+            </div>
+
+            <div className="progressGrid">
+              <article className="chartPanel">
+                <div className="panelTitle">
+                  <div>
+                    <p className="eyebrow">LAST 7 SESSIONS</p>
+                    <h2>Training consistency</h2>
+                  </div>
+                  <span>{logs.length} total workouts</span>
+                </div>
+                <div className="barChart" aria-label="Recent workout completion chart">
+                  {activityBars.map((height, index) => (
+                    <div key={index}>
+                      <span style={{ height: `${height}%` }} />
+                      <small>{["M", "T", "W", "T", "F", "S", "S"][index]}</small>
+                    </div>
+                  ))}
+                </div>
+              </article>
+
+              <article className="progressSummary">
+                <p className="eyebrow">TOTALS</p>
+                <div>
+                  <strong>{logs.length}</strong>
+                  <span>workouts</span>
+                </div>
+                <div>
+                  <strong>{totalMinutes}</strong>
+                  <span>minutes trained</span>
+                </div>
+                <div>
+                  <strong>
+                    {logs.reduce((sum, log) => sum + log.exercisesCompleted, 0)}
+                  </strong>
+                  <span>exercises completed</span>
+                </div>
+              </article>
+            </div>
+
+            <section className="historyPanel">
+              <div className="panelTitle">
+                <div>
+                  <p className="eyebrow">ACTIVITY LOG</p>
+                  <h2>Workout history</h2>
+                </div>
+              </div>
+              {logs.length ? (
+                <div className="historyTable">
+                  <div className="historyHead">
+                    <span>WORKOUT</span>
+                    <span>DATE</span>
+                    <span>EXERCISES</span>
+                    <span>DURATION</span>
+                    <span>STATUS</span>
+                  </div>
+                  {logs.map((log) => (
+                    <div className="historyRow" key={log.id}>
+                      <span><span className="activityCheck">✓</span><strong>{log.workoutName}</strong></span>
+                      <span>{formatDate(log.performedAt)}</span>
+                      <span>{log.exercisesCompleted} / {log.totalExercises}</span>
+                      <span>{log.duration} min</span>
+                      <span className="statusPill">Completed</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyActivity onStart={() => openWorkout()} />
+              )}
+            </section>
+          </div>
+        )}
       </section>
 
-      <footer>
-        <a className="brand footerBrand" href="#top">
-          <span className="brandGlyph" aria-hidden="true" /> LIFTLY
-        </a>
-        <p>Build the plan. Do the work. Keep the promise.</p>
-        <a href="#top">Back to top ↑</a>
-      </footer>
+      <nav className="mobileNav" aria-label="Mobile navigation">
+        {navItems.map((item) => (
+          <button
+            aria-current={view === item.id ? "page" : undefined}
+            className={view === item.id ? "active" : ""}
+            key={item.id}
+            onClick={() => setView(item.id)}
+            type="button"
+          >
+            <span>{item.icon}</span>
+            {item.label}
+          </button>
+        ))}
+      </nav>
 
       <div
         aria-live="polite"
-        className={saveState === "saved" || saveState === "error" ? "saveToast visible" : "saveToast"}
+        className={notice ? "toast visible" : "toast"}
       >
-        {saveState === "saved" ? "Saved to your training log ✓" : "Couldn’t save yet — please try again"}
+        {notice}
       </div>
     </main>
   );
