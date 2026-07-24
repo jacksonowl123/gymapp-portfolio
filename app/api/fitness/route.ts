@@ -41,6 +41,20 @@ async function ensureSchema(db: D1Database) {
       CREATE INDEX IF NOT EXISTS workout_logs_profile_date_idx
       ON workout_logs (profile_id, performed_at)
     `),
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS workout_sets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        log_id INTEGER NOT NULL,
+        exercise_name TEXT NOT NULL,
+        weight REAL NOT NULL,
+        reps INTEGER NOT NULL,
+        FOREIGN KEY (log_id) REFERENCES workout_logs(id) ON DELETE CASCADE
+      )
+    `),
+    db.prepare(`
+      CREATE INDEX IF NOT EXISTS workout_sets_log_idx
+      ON workout_sets (log_id)
+    `),
   ]);
 }
 
@@ -61,7 +75,7 @@ export async function GET(request: Request) {
   try {
     const db = database();
     await ensureSchema(db);
-    const [profileResult, logsResult] = await db.batch([
+    const [profileResult, logsResult, setsResult] = await db.batch([
       db.prepare(`
         SELECT
           id, goal, experience, days, equipment,
@@ -80,11 +94,37 @@ export async function GET(request: Request) {
         ORDER BY performed_at DESC, id DESC
         LIMIT 20
       `).bind(profileId),
+      db.prepare(`
+        SELECT
+          workout_sets.log_id AS logId,
+          workout_sets.exercise_name AS exerciseName,
+          workout_sets.weight,
+          workout_sets.reps
+        FROM workout_sets
+        INNER JOIN workout_logs ON workout_logs.id = workout_sets.log_id
+        WHERE workout_logs.profile_id = ?
+        ORDER BY workout_logs.performed_at DESC, workout_sets.id ASC
+      `).bind(profileId),
     ]);
+
+    const setsByLog = new Map<number, Array<Record<string, unknown>>>();
+    for (const set of setsResult.results as Array<Record<string, unknown>>) {
+      const logId = Number(set.logId);
+      const current = setsByLog.get(logId) ?? [];
+      current.push({
+        exerciseName: set.exerciseName,
+        weight: Number(set.weight),
+        reps: Number(set.reps),
+      });
+      setsByLog.set(logId, current);
+    }
 
     return Response.json({
       profile: profileResult.results[0] ?? null,
-      logs: logsResult.results,
+      logs: (logsResult.results as Array<Record<string, unknown>>).map((log) => ({
+        ...log,
+        sets: setsByLog.get(Number(log.id)) ?? [],
+      })),
     });
   } catch (error) {
     return Response.json(
@@ -114,7 +154,7 @@ export async function POST(request: Request) {
       const planName = safeText(plan?.name);
       const planJson = JSON.stringify(plan ?? {});
 
-      if (!goal || !experience || !equipment || !planName || !Number.isInteger(days) || days < 2 || days > 5 || planJson.length > 30000) {
+      if (!goal || !experience || !equipment || !planName || !Number.isInteger(days) || days < 1 || days > 7 || planJson.length > 30000) {
         return Response.json({ error: "The training plan is invalid." }, { status: 400 });
       }
 
@@ -148,6 +188,26 @@ export async function POST(request: Request) {
       const duration = Number(payload.duration);
       const exercisesCompleted = Number(payload.exercisesCompleted);
       const totalExercises = Number(payload.totalExercises);
+      const sets = Array.isArray(payload.sets)
+        ? payload.sets.slice(0, 50).flatMap((value) => {
+            const set = value as Record<string, unknown>;
+            const exerciseName = safeText(set.exerciseName);
+            const weight = Number(set.weight);
+            const reps = Number(set.reps);
+            if (
+              !exerciseName ||
+              !Number.isFinite(weight) ||
+              weight <= 0 ||
+              weight > 2000 ||
+              !Number.isInteger(reps) ||
+              reps < 1 ||
+              reps > 1000
+            ) {
+              return [];
+            }
+            return [{ exerciseName, weight, reps }];
+          })
+        : [];
 
       if (
         !workoutName ||
@@ -180,7 +240,22 @@ export async function POST(request: Request) {
         totalExercises,
       ).first();
 
-      return Response.json({ log: result }, { status: 201 });
+      if (!result) {
+        throw new Error("The workout log could not be created.");
+      }
+
+      if (sets.length) {
+        await db.batch(
+          sets.map((set) =>
+            db.prepare(`
+              INSERT INTO workout_sets (log_id, exercise_name, weight, reps)
+              VALUES (?, ?, ?, ?)
+            `).bind(result.id, set.exerciseName, set.weight, set.reps),
+          ),
+        );
+      }
+
+      return Response.json({ log: { ...result, sets } }, { status: 201 });
     }
 
     return Response.json({ error: "Unknown action." }, { status: 400 });

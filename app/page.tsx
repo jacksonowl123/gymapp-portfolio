@@ -6,6 +6,15 @@ type Goal = "Build muscle" | "Get stronger" | "Lose fat" | "Move better";
 type Experience = "Beginner" | "Intermediate" | "Advanced";
 type Equipment = "Full gym" | "Dumbbells only" | "Bodyweight";
 type View = "dashboard" | "plan" | "workout" | "progress";
+type TrainingType =
+  | "upper"
+  | "lower"
+  | "push"
+  | "pull"
+  | "full"
+  | "conditioning"
+  | "mobility";
+type DayAssignment = TrainingType | "rest";
 
 type Profile = {
   goal: Goal;
@@ -26,6 +35,7 @@ type Workout = {
   duration: number;
   exercises: Exercise[];
   accent: string;
+  type?: TrainingType;
 };
 
 type Recommendation = {
@@ -42,16 +52,14 @@ type WorkoutLog = {
   exercisesCompleted: number;
   totalExercises: number;
   performedAt: string;
+  sets?: Array<{
+    exerciseName: string;
+    weight: number;
+    reps: number;
+  }>;
 };
 
-const goals: Goal[] = [
-  "Build muscle",
-  "Get stronger",
-  "Lose fat",
-  "Move better",
-];
-
-const dayLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
+const dayLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 const exerciseLibrary = {
   upper: [
@@ -105,6 +113,51 @@ const exerciseLibrary = {
   ],
 } satisfies Record<string, string[][]>;
 
+const trainingOptions: Array<{
+  value: DayAssignment;
+  label: string;
+  note: string;
+}> = [
+  { value: "rest", label: "Rest day", note: "Recovery" },
+  { value: "push", label: "Push", note: "Chest, shoulders, triceps" },
+  { value: "pull", label: "Pull", note: "Back, rear delts, biceps" },
+  { value: "lower", label: "Legs", note: "Quads, hamstrings, calves" },
+  { value: "upper", label: "Upper body", note: "Balanced upper-body session" },
+  { value: "full", label: "Full body", note: "One movement for every area" },
+  { value: "conditioning", label: "Conditioning", note: "Fitness and work capacity" },
+  { value: "mobility", label: "Mobility", note: "Move and recover better" },
+];
+
+const manualTitles: Record<TrainingType, string> = {
+  upper: "Upper body",
+  lower: "Legs",
+  push: "Push",
+  pull: "Pull",
+  full: "Full body",
+  conditioning: "Conditioning",
+  mobility: "Mobility",
+};
+
+const manualDurations: Record<TrainingType, number> = {
+  upper: 55,
+  lower: 55,
+  push: 50,
+  pull: 50,
+  full: 55,
+  conditioning: 38,
+  mobility: 35,
+};
+
+const manualAccents = [
+  "#ec6335",
+  "#a6c76e",
+  "#668fa0",
+  "#c98c9b",
+  "#8976b8",
+  "#cf9f4f",
+  "#5f9f8b",
+];
+
 const defaultProfile: Profile = {
   goal: "Build muscle",
   experience: "Intermediate",
@@ -114,6 +167,48 @@ const defaultProfile: Profile = {
 
 function toExercises(items: string[][]): Exercise[] {
   return items.map(([name, sets, focus]) => ({ name, sets, focus }));
+}
+
+function inferTrainingType(workout: Workout): TrainingType {
+  if (workout.type) return workout.type;
+  const title = workout.title.toLowerCase();
+  const matched = (
+    ["conditioning", "mobility", "push", "pull", "lower", "upper", "full"] as TrainingType[]
+  ).find((type) => title.includes(type));
+  if (matched) return matched;
+  if (workout.exercises.some((exercise) => exercise.focus === "Quads")) return "lower";
+  return "full";
+}
+
+function scheduleFromWorkouts(workouts: Workout[]) {
+  return Object.fromEntries(
+    dayLabels.map((day) => {
+      const workout = workouts.find((item) => item.day === day);
+      return [day, workout ? inferTrainingType(workout) : "rest"];
+    }),
+  ) as Record<string, DayAssignment>;
+}
+
+function buildManualPlan(schedule: Record<string, DayAssignment>): Recommendation {
+  const workouts = dayLabels.flatMap((day, index) => {
+    const type = schedule[day] ?? "rest";
+    if (type === "rest") return [];
+    return [{
+      day,
+      title: manualTitles[type],
+      duration: manualDurations[type],
+      exercises: toExercises(exerciseLibrary[type]),
+      accent: manualAccents[index],
+      type,
+    }];
+  });
+
+  return {
+    name: "My weekly plan",
+    summary: "A weekly training schedule built by you.",
+    reason: `You set ${workouts.length} training ${workouts.length === 1 ? "day" : "days"} this week, with rest days kept visible for recovery.`,
+    workouts,
+  };
 }
 
 function getExerciseVisual(exercise: Exercise) {
@@ -235,6 +330,7 @@ function buildRecommendation(profile: Profile): Recommendation {
       duration: beginner ? 45 : type === "conditioning" ? 38 : 55,
       exercises: toExercises(exerciseLibrary[type]),
       accent: accents[index],
+      type,
     };
   });
 
@@ -283,6 +379,9 @@ export default function Home() {
   const [recommendation, setRecommendation] = useState<Recommendation>(() =>
     buildRecommendation(defaultProfile),
   );
+  const [weekSchedule, setWeekSchedule] = useState<Record<string, DayAssignment>>(
+    () => scheduleFromWorkouts(buildRecommendation(defaultProfile).workouts),
+  );
   const [selectedWorkout, setSelectedWorkout] = useState(0);
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
   const [entries, setEntries] = useState<
@@ -301,6 +400,14 @@ export default function Home() {
   const weeklyDone = Math.min(logs.length, weeklyTarget);
   const weeklyPercent = Math.round((weeklyDone / weeklyTarget) * 100);
   const totalMinutes = logs.reduce((sum, log) => sum + log.duration, 0);
+  const loggedSets = logs.flatMap((log) => log.sets ?? []);
+  const totalVolume = Math.round(
+    loggedSets.reduce((sum, set) => sum + set.weight * set.reps, 0),
+  );
+  const heaviestSet = loggedSets.reduce(
+    (heaviest, set) => Math.max(heaviest, set.weight),
+    0,
+  );
 
   useEffect(() => {
     setToday(
@@ -330,7 +437,9 @@ export default function Home() {
             equipment: data.profile.equipment,
           };
           setProfile(savedProfile);
-          setRecommendation(JSON.parse(data.profile.planJson));
+          const savedPlan = JSON.parse(data.profile.planJson) as Recommendation;
+          setRecommendation(savedPlan);
+          setWeekSchedule(scheduleFromWorkouts(savedPlan.workouts));
         }
         if (Array.isArray(data.logs)) setLogs(data.logs);
       })
@@ -356,7 +465,7 @@ export default function Home() {
     setView("workout");
   }
 
-  async function savePlan(next: Recommendation) {
+  async function savePlan(next: Recommendation, nextProfile = profile) {
     if (!profileId) return;
     setSaving(true);
     try {
@@ -366,7 +475,7 @@ export default function Home() {
         body: JSON.stringify({
           action: "save-plan",
           profileId,
-          profile,
+          profile: nextProfile,
           plan: next,
         }),
       });
@@ -380,13 +489,20 @@ export default function Home() {
     }
   }
 
-  function generatePlan() {
-    const next = buildRecommendation(profile);
+  function saveManualPlan() {
+    const next = buildManualPlan(weekSchedule);
+    if (next.workouts.length === 0) {
+      setNotice("Choose at least one training day before saving.");
+      window.setTimeout(() => setNotice(""), 2600);
+      return;
+    }
+    const nextProfile = { ...profile, days: next.workouts.length };
+    setProfile(nextProfile);
     setRecommendation(next);
     setSelectedWorkout(0);
     setCompleted({});
     setEntries({});
-    void savePlan(next);
+    void savePlan(next, nextProfile);
   }
 
   async function logWorkout() {
@@ -403,6 +519,14 @@ export default function Home() {
           duration: workout.duration,
           exercisesCompleted: completedCount,
           totalExercises: workout.exercises.length,
+          sets: workout.exercises.flatMap((exercise) => {
+            const key = `${workout.title}-${exercise.name}`;
+            const entry = entries[key];
+            const weight = Number(entry?.weight);
+            const reps = Number(entry?.reps);
+            if (!completed[key] || weight <= 0 || reps <= 0) return [];
+            return [{ exerciseName: exercise.name, weight, reps }];
+          }),
         }),
       });
       if (!response.ok) throw new Error("Log failed");
@@ -473,7 +597,7 @@ export default function Home() {
           <span className="avatar">JL</span>
           <span>
             <strong>My profile</strong>
-            <small>{profile.experience}</small>
+            <small>Lift tracker</small>
           </span>
           <span aria-hidden="true">•••</span>
         </button>
@@ -511,8 +635,8 @@ export default function Home() {
             <div className="pageTitle">
               <div>
                 <p className="eyebrow">TRAINING DASHBOARD</p>
-                <h1>Ready to put in the work?</h1>
-                <span>Your plan, performance and next session in one place.</span>
+                <h1>Your lifting progress</h1>
+                <span>Track training volume, your best load and your next session.</span>
               </div>
               <button
                 className="secondaryAction"
@@ -525,13 +649,13 @@ export default function Home() {
 
             <section className="trainingHero">
               <div className="trainingHeroContent">
-                <span className="heroTag">TODAY&apos;S RECOMMENDATION</span>
+                <span className="heroTag">NEXT PLANNED SESSION</span>
                 <p>{workout.day} · {recommendation.name}</p>
                 <h2>{workout.title}</h2>
                 <div className="heroMeta">
                   <span><strong>{workout.duration}</strong> min</span>
                   <span><strong>{workout.exercises.length}</strong> exercises</span>
-                  <span><strong>{profile.experience}</strong> level</span>
+                  <span><strong>{weeklyTarget}</strong> days planned</span>
                 </div>
                 <div className="heroFocus">
                   {Array.from(new Set(workout.exercises.map((exercise) => exercise.focus)))
@@ -554,9 +678,9 @@ export default function Home() {
                 </div>
               </div>
               <div className="readinessCard">
-                <span>PLAN MATCH</span>
-                <strong>92<small>%</small></strong>
-                <p>Right intensity for your current goal and schedule.</p>
+                <span>THIS WEEK</span>
+                <strong>{weeklyDone}<small>/{weeklyTarget}</small></strong>
+                <p>Planned sessions completed.</p>
               </div>
               <span className="heroWatermark" aria-hidden="true">LIFT</span>
             </section>
@@ -576,25 +700,25 @@ export default function Home() {
               <article className="statCard">
                 <span className="statIcon green">⌁</span>
                 <div>
-                  <small>TRAINING TIME</small>
-                  <strong>{totalMinutes}</strong>
-                  <span>minutes logged</span>
+                  <small>TOTAL VOLUME</small>
+                  <strong>{totalVolume.toLocaleString()}</strong>
+                  <span>kg from recorded sets</span>
                 </div>
-                <span className="statTrend">This week</span>
+                <span className="statTrend">All logs</span>
               </article>
               <article className="statCard">
                 <span className="statIcon blue">⌁</span>
                 <div>
-                  <small>CURRENT GOAL</small>
-                  <strong className="goalStat">{profile.goal}</strong>
-                  <span>{profile.days} training days</span>
+                  <small>HEAVIEST SET</small>
+                  <strong>{heaviestSet}</strong>
+                  <span>kg recorded</span>
                 </div>
                 <button
                   className="miniLink"
-                  onClick={() => setView("plan")}
+                  onClick={() => setView("progress")}
                   type="button"
                 >
-                  Change
+                  Details
                 </button>
               </article>
             </div>
@@ -726,17 +850,17 @@ export default function Home() {
           <div className="appPage">
             <div className="pageTitle">
               <div>
-                <p className="eyebrow">PROGRAM</p>
+                <p className="eyebrow">WEEKLY PROGRAM</p>
                 <h1>My training plan</h1>
-                <span>{recommendation.summary}</span>
+                <span>Choose what you want to train on each day of the week.</span>
               </div>
               <button
                 className="primaryAction"
                 disabled={saving}
-                onClick={generatePlan}
+                onClick={saveManualPlan}
                 type="button"
               >
-                {saving ? "Saving…" : "Update plan"}
+                {saving ? "Saving…" : "Save weekly plan"}
               </button>
             </div>
 
@@ -745,122 +869,87 @@ export default function Home() {
                 <div className="panelTitle">
                   <div>
                     <p className="eyebrow">WEEKLY SCHEDULE</p>
-                    <h2>{recommendation.name}</h2>
+                    <h2>Plan each training day</h2>
                   </div>
-                  <span>{weeklyTarget} days / week</span>
+                  <span>
+                    {Object.values(weekSchedule).filter((day) => day !== "rest").length} training days
+                  </span>
                 </div>
-                <div className="planRows">
-                  {recommendation.workouts.map((item, index) => (
-                    <button
-                      key={`${item.day}-${item.title}`}
-                      onClick={() => openWorkout(index)}
-                      type="button"
-                    >
+                <div className="dayPlanner">
+                  {dayLabels.map((day, index) => {
+                    const assignment = weekSchedule[day] ?? "rest";
+                    const option = trainingOptions.find(
+                      (item) => item.value === assignment,
+                    ) ?? trainingOptions[0];
+                    const isRest = assignment === "rest";
+                    return (
+                      <div className={isRest ? "dayPlanRow rest" : "dayPlanRow"} key={day}>
                       <span
-                        className="planIndex"
-                        style={{ "--accent": item.accent } as React.CSSProperties}
+                        className="dayPlanBadge"
+                        style={{ "--accent": manualAccents[index] } as React.CSSProperties}
                       >
-                        {String(index + 1).padStart(2, "0")}
+                        <small>DAY {index + 1}</small>
+                        <strong>{day}</strong>
                       </span>
-                      <span className="planInfo">
-                        <small>{item.day}</small>
-                        <strong>{item.title}</strong>
+                      <span className="dayPlanCopy">
+                        <strong>{option.label}</strong>
+                        <small>{option.note}</small>
                       </span>
-                      <span className="planMeta">
-                        {item.exercises.length} exercises
+                      <label className="dayPlanSelect">
+                        <span className="srOnly">Training for {day}</span>
+                        <select
+                          value={assignment}
+                          onChange={(event) =>
+                            setWeekSchedule((current) => ({
+                              ...current,
+                              [day]: event.target.value as DayAssignment,
+                            }))
+                          }
+                        >
+                          {trainingOptions.map((item) => (
+                            <option key={item.value} value={item.value}>
+                              {item.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <span className="dayPlanStatus">
+                        {isRest ? "REST" : `${exerciseLibrary[assignment].length} EXERCISES`}
                       </span>
-                      <span className="planMeta">{item.duration} min</span>
-                      <span className="openArrow" aria-hidden="true">→</span>
-                    </button>
-                  ))}
+                    </div>
+                    );
+                  })}
                 </div>
               </section>
 
-              <aside className="settingsPanel">
-                <div className="panelTitle">
+              <aside className="planSide">
+                <section className="aiFutureCard">
+                  <span className="futureBadge">FUTURE FEATURE</span>
                   <div>
-                    <p className="eyebrow">PLAN SETTINGS</p>
-                    <h2>Personalise</h2>
+                    <p className="eyebrow">AI COACH</p>
+                    <h2>Recommended plans</h2>
+                    <p>
+                      Later, AI can use your goal, experience and available
+                      equipment to suggest a weekly plan. For now, your schedule
+                      stays completely in your control.
+                    </p>
                   </div>
-                </div>
-                <label>
-                  <span>Primary goal</span>
-                  <select
-                    value={profile.goal}
-                    onChange={(event) =>
-                      setProfile((current) => ({
-                        ...current,
-                        goal: event.target.value as Goal,
-                      }))
-                    }
-                  >
-                    {goals.map((goal) => (
-                      <option key={goal}>{goal}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>Experience level</span>
-                  <select
-                    value={profile.experience}
-                    onChange={(event) =>
-                      setProfile((current) => ({
-                        ...current,
-                        experience: event.target.value as Experience,
-                      }))
-                    }
-                  >
-                    <option>Beginner</option>
-                    <option>Intermediate</option>
-                    <option>Advanced</option>
-                  </select>
-                </label>
-                <label>
-                  <span>Available equipment</span>
-                  <select
-                    value={profile.equipment}
-                    onChange={(event) =>
-                      setProfile((current) => ({
-                        ...current,
-                        equipment: event.target.value as Equipment,
-                      }))
-                    }
-                  >
-                    <option>Full gym</option>
-                    <option>Dumbbells only</option>
-                    <option>Bodyweight</option>
-                  </select>
-                </label>
-                <fieldset>
-                  <legend>Training days</legend>
-                  <div className="dayChoice">
-                    {[2, 3, 4, 5].map((day) => (
-                      <button
-                        aria-pressed={profile.days === day}
-                        className={profile.days === day ? "active" : ""}
-                        key={day}
-                        onClick={() =>
-                          setProfile((current) => ({ ...current, days: day }))
-                        }
-                        type="button"
-                      >
-                        {day}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
                 <button
-                  className="fullAction"
-                  disabled={saving}
-                  onClick={generatePlan}
+                  className="futureAction"
+                  disabled
                   type="button"
                 >
-                  {saving ? "Building your plan…" : "Build recommended plan"}
+                  AI coach coming later
                 </button>
-                <p className="safety">
-                  General fitness guidance only. Consult a qualified professional
-                  if you have pain, an injury or a medical condition.
-                </p>
+                </section>
+                <section className="planTipCard">
+                  <p className="eyebrow">SIMPLE RULE</p>
+                  <h3>Give trained muscles time to recover.</h3>
+                  <p>
+                    Avoid placing the same hard session on back-to-back days.
+                    Use Rest or Mobility between demanding workouts.
+                  </p>
+                </section>
               </aside>
             </div>
           </div>

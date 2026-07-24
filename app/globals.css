@@ -698,6 +698,8 @@ input:focus-visible {
 .activityCard,
 .planBoard,
 .settingsPanel,
+.aiFutureCard,
+.planTipCard,
 .loggerPanel,
 .sessionSummary,
 .chartPanel,
@@ -985,7 +987,7 @@ input:focus-visible {
   align-items: start;
   display: grid;
   gap: 17px;
-  grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, .45fr);
 }
 
 .panelTitle > span {
@@ -998,6 +1000,179 @@ input:focus-visible {
 
 .planRows {
   padding: 5px 12px 12px;
+}
+
+.dayPlanner {
+  padding: 7px 14px 14px;
+}
+
+.dayPlanRow {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 15px;
+  grid-template-columns: 62px minmax(130px, 1fr) minmax(150px, 210px) 88px;
+  min-height: 86px;
+  padding: 10px 8px;
+  transition: background .2s ease, opacity .2s ease;
+}
+
+.dayPlanRow:last-child {
+  border-bottom: 0;
+}
+
+.dayPlanRow:hover {
+  background: #f8f8f4;
+}
+
+.dayPlanRow.rest {
+  opacity: .66;
+}
+
+.dayPlanBadge {
+  align-items: flex-start;
+  background: color-mix(in srgb, var(--accent) 14%, white);
+  border-left: 3px solid var(--accent);
+  border-radius: 7px;
+  display: flex;
+  flex-direction: column;
+  height: 52px;
+  justify-content: center;
+  padding-left: 10px;
+  width: 62px;
+}
+
+.dayPlanBadge small {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 6px;
+  margin-bottom: 3px;
+}
+
+.dayPlanBadge strong {
+  color: var(--accent);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+}
+
+.dayPlanCopy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dayPlanCopy strong {
+  font-size: 11px;
+}
+
+.dayPlanCopy small {
+  color: var(--muted);
+  font-size: 8px;
+  margin-top: 4px;
+}
+
+.dayPlanSelect select {
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--ink) 50%) calc(100% - 17px) 18px / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--ink) 50%, transparent 50%) calc(100% - 12px) 18px / 5px 5px no-repeat,
+    #fff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 9px;
+  min-height: 42px;
+  padding: 0 34px 0 12px;
+  width: 100%;
+}
+
+.dayPlanSelect select:focus-visible {
+  border-color: var(--orange);
+  outline: 2px solid color-mix(in srgb, var(--orange) 25%, transparent);
+}
+
+.dayPlanStatus {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 6px;
+  letter-spacing: .06em;
+  text-align: right;
+}
+
+.planSide {
+  display: grid;
+  gap: 14px;
+}
+
+.aiFutureCard {
+  background:
+    radial-gradient(circle at 90% 0%, rgba(236, 99, 53, .3), transparent 34%),
+    var(--ink);
+  color: #fff;
+  overflow: hidden;
+  padding: 23px;
+  position: relative;
+}
+
+.futureBadge {
+  background: rgba(236, 99, 53, .18);
+  border: 1px solid rgba(236, 99, 53, .48);
+  border-radius: 999px;
+  color: #ff936c;
+  display: inline-flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  padding: 7px 9px;
+}
+
+.aiFutureCard > div {
+  margin: 65px 0 28px;
+}
+
+.aiFutureCard h2 {
+  font-size: 24px;
+  letter-spacing: -.04em;
+  margin: 6px 0 10px;
+}
+
+.aiFutureCard p {
+  color: #acaea7;
+  font-size: 9px;
+  line-height: 1.7;
+  margin: 0;
+}
+
+.aiFutureCard .eyebrow {
+  color: #ff936c;
+}
+
+.futureAction {
+  background: #2a2b27;
+  border: 1px solid #3b3d37;
+  border-radius: 7px;
+  color: #777a72;
+  cursor: not-allowed;
+  min-height: 42px;
+  width: 100%;
+}
+
+.planTipCard {
+  padding: 20px;
+}
+
+.planTipCard h3 {
+  font-size: 15px;
+  letter-spacing: -.025em;
+  margin: 7px 0 8px;
+}
+
+.planTipCard > p:last-child {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.65;
+  margin: 0;
 }
 
 .planRows button {
@@ -1533,6 +1708,14 @@ input:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .planSide {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .aiFutureCard > div {
+    margin-top: 35px;
+  }
+
   .settingsPanel {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -1652,6 +1835,22 @@ input:focus-visible {
 
   .settingsPanel {
     display: block;
+  }
+
+  .planSide {
+    grid-template-columns: 1fr;
+  }
+
+  .dayPlanRow {
+    grid-template-columns: 56px 1fr minmax(145px, 190px);
+  }
+
+  .dayPlanBadge {
+    width: 56px;
+  }
+
+  .dayPlanStatus {
+    display: none;
   }
 
   .planRows button {
@@ -1795,6 +1994,31 @@ input:focus-visible {
 
   .planRows .planMeta {
     display: none;
+  }
+
+  .dayPlanner {
+    padding-inline: 10px;
+  }
+
+  .dayPlanRow {
+    align-items: start;
+    gap: 8px 11px;
+    grid-template-columns: 52px 1fr;
+    padding-block: 12px;
+  }
+
+  .dayPlanBadge {
+    grid-row: 1 / 3;
+    height: 58px;
+    width: 52px;
+  }
+
+  .dayPlanSelect {
+    grid-column: 2;
+  }
+
+  .dayPlanCopy small {
+    white-space: normal;
   }
 
   .loggerRow {

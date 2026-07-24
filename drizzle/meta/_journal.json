@@ -8,6 +8,13 @@
       "when": 1784860310586,
       "tag": "0000_clever_bromley",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1784897629181,
+      "tag": "0001_colorful_lockjaw",
+      "breakpoints": true
     }
   ]
 }
