@@ -1187,7 +1187,7 @@ input:focus-visible {
   font-weight: 700;
   grid-template-columns: 1fr 90px 90px 50px;
   min-height: 46px;
-  padding: 0 20px 0 72px;
+  padding: 0 20px 0 112px;
 }
 
 .loggerRow {
@@ -1195,7 +1195,7 @@ input:focus-visible {
   border-bottom: 1px solid var(--line);
   display: grid;
   gap: 13px;
-  grid-template-columns: 34px 1fr 90px 90px 50px;
+  grid-template-columns: 72px 1fr 90px 90px 50px;
   min-height: 78px;
   padding: 10px 20px;
 }
@@ -1207,6 +1207,36 @@ input:focus-visible {
 .loggerRow.done .loggerExercise strong {
   color: var(--muted);
   text-decoration: line-through;
+}
+
+.exerciseVisual {
+  background-image: url("/workout-exercise-sprite.png");
+  background-position: var(--exercise-position);
+  background-repeat: no-repeat;
+  background-size: 300% 200%;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+  display: block;
+  height: 56px;
+  overflow: hidden;
+  position: relative;
+  transition: filter .2s ease, opacity .2s ease;
+  width: 72px;
+}
+
+.exerciseVisual .exerciseNumber {
+  background: rgba(17, 18, 16, .82);
+  bottom: 5px;
+  color: #fff;
+  height: 22px;
+  left: 5px;
+  position: absolute;
+  width: 25px;
+}
+
+.loggerRow.done .exerciseVisual {
+  filter: grayscale(1);
+  opacity: .58;
 }
 
 .loggerExercise {
@@ -1646,8 +1676,13 @@ input:focus-visible {
 
   .loggerRow {
     gap: 9px;
-    grid-template-columns: 30px 1fr 65px 65px 34px;
+    grid-template-columns: 68px 1fr 65px 65px 34px;
     padding-inline: 12px;
+  }
+
+  .exerciseVisual {
+    height: 54px;
+    width: 68px;
   }
 
   .loggerRow input:not([type="checkbox"]) {
@@ -1764,7 +1799,7 @@ input:focus-visible {
 
   .loggerRow {
     align-items: start;
-    grid-template-columns: 28px 1fr 30px;
+    grid-template-columns: 68px 1fr 30px;
   }
 
   .loggerRow > label:not(.doneControl) {

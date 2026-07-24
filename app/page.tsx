@@ -116,6 +116,63 @@ function toExercises(items: string[][]): Exercise[] {
   return items.map(([name, sets, focus]) => ({ name, sets, focus }));
 }
 
+function getExerciseVisual(exercise: Exercise) {
+  const movement = `${exercise.name} ${exercise.focus}`.toLowerCase();
+
+  if (
+    movement.includes("bike") ||
+    movement.includes("kettlebell") ||
+    movement.includes("interval")
+  ) {
+    return { label: "Conditioning example", position: "100% 100%" };
+  }
+
+  if (
+    movement.includes("core") ||
+    movement.includes("dead bug") ||
+    movement.includes("carry") ||
+    movement.includes("stretch") ||
+    movement.includes("full body")
+  ) {
+    return { label: "Core and mobility example", position: "50% 100%" };
+  }
+
+  if (
+    movement.includes("deadlift") ||
+    movement.includes("hinge") ||
+    movement.includes("hamstring") ||
+    movement.includes("posterior")
+  ) {
+    return { label: "Hip hinge example", position: "0% 100%" };
+  }
+
+  if (
+    movement.includes("squat") ||
+    movement.includes("lunge") ||
+    movement.includes("leg") ||
+    movement.includes("quad") ||
+    movement.includes("calf") ||
+    movement.includes("hip")
+  ) {
+    return { label: "Lower-body example", position: "100% 0%" };
+  }
+
+  if (
+    movement.includes("row") ||
+    movement.includes("pulldown") ||
+    movement.includes("lat") ||
+    movement.includes("back") ||
+    movement.includes("curl") ||
+    movement.includes("biceps") ||
+    movement.includes("face pull") ||
+    movement.includes("rear delt")
+  ) {
+    return { label: "Pull movement example", position: "50% 0%" };
+  }
+
+  return { label: "Push movement example", position: "0% 0%" };
+}
+
 function buildRecommendation(profile: Profile): Recommendation {
   const days = dayLabels.slice(0, profile.days);
   const beginner = profile.experience === "Beginner";
@@ -842,10 +899,20 @@ export default function Home() {
                   const key = `${workout.title}-${exercise.name}`;
                   const isDone = Boolean(completed[key]);
                   const entry = entries[key] ?? { weight: "", reps: "" };
+                  const visual = getExerciseVisual(exercise);
                   return (
                     <div className={isDone ? "loggerRow done" : "loggerRow"} key={key}>
-                      <span className="exerciseNumber">
-                        {String(index + 1).padStart(2, "0")}
+                      <span
+                        aria-label={visual.label}
+                        className="exerciseVisual"
+                        role="img"
+                        style={{
+                          "--exercise-position": visual.position,
+                        } as React.CSSProperties}
+                      >
+                        <span className="exerciseNumber">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
                       </span>
                       <span className="loggerExercise">
                         <strong>{exercise.name}</strong>
