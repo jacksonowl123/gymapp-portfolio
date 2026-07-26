@@ -46,6 +46,7 @@ async function ensureSchema(db: D1Database) {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         log_id INTEGER NOT NULL,
         exercise_name TEXT NOT NULL,
+        set_number INTEGER NOT NULL DEFAULT 1,
         weight REAL NOT NULL,
         reps INTEGER NOT NULL,
         FOREIGN KEY (log_id) REFERENCES workout_logs(id) ON DELETE CASCADE
@@ -98,6 +99,7 @@ export async function GET(request: Request) {
         SELECT
           workout_sets.log_id AS logId,
           workout_sets.exercise_name AS exerciseName,
+          workout_sets.set_number AS setNumber,
           workout_sets.weight,
           workout_sets.reps
         FROM workout_sets
@@ -113,6 +115,7 @@ export async function GET(request: Request) {
       const current = setsByLog.get(logId) ?? [];
       current.push({
         exerciseName: set.exerciseName,
+        setNumber: Number(set.setNumber),
         weight: Number(set.weight),
         reps: Number(set.reps),
       });
@@ -192,10 +195,14 @@ export async function POST(request: Request) {
         ? payload.sets.slice(0, 50).flatMap((value) => {
             const set = value as Record<string, unknown>;
             const exerciseName = safeText(set.exerciseName);
+            const setNumber = Number(set.setNumber);
             const weight = Number(set.weight);
             const reps = Number(set.reps);
             if (
               !exerciseName ||
+              !Number.isInteger(setNumber) ||
+              setNumber < 1 ||
+              setNumber > 20 ||
               !Number.isFinite(weight) ||
               weight <= 0 ||
               weight > 2000 ||
@@ -205,7 +212,7 @@ export async function POST(request: Request) {
             ) {
               return [];
             }
-            return [{ exerciseName, weight, reps }];
+            return [{ exerciseName, setNumber, weight, reps }];
           })
         : [];
 
@@ -244,18 +251,57 @@ export async function POST(request: Request) {
         throw new Error("The workout log could not be created.");
       }
 
+      const bestResult = sets.length
+        ? await db.prepare(`
+            SELECT
+              workout_sets.exercise_name AS exerciseName,
+              MAX(workout_sets.weight) AS maxWeight
+            FROM workout_sets
+            INNER JOIN workout_logs ON workout_logs.id = workout_sets.log_id
+            WHERE workout_logs.profile_id = ?
+            GROUP BY workout_sets.exercise_name
+          `).bind(payload.profileId).all()
+        : { results: [] };
+      const previousBests = new Map(
+        (bestResult.results as Array<Record<string, unknown>>).map((best) => [
+          String(best.exerciseName).toLowerCase(),
+          Number(best.maxWeight),
+        ]),
+      );
+      const personalRecords = Array.from(
+        new Set(
+          sets
+            .filter(
+              (set) =>
+                set.weight >
+                (previousBests.get(set.exerciseName.toLowerCase()) ?? 0),
+            )
+            .map((set) => set.exerciseName),
+        ),
+      );
+
       if (sets.length) {
         await db.batch(
           sets.map((set) =>
             db.prepare(`
-              INSERT INTO workout_sets (log_id, exercise_name, weight, reps)
-              VALUES (?, ?, ?, ?)
-            `).bind(result.id, set.exerciseName, set.weight, set.reps),
+              INSERT INTO workout_sets
+                (log_id, exercise_name, set_number, weight, reps)
+              VALUES (?, ?, ?, ?, ?)
+            `).bind(
+              result.id,
+              set.exerciseName,
+              set.setNumber,
+              set.weight,
+              set.reps,
+            ),
           ),
         );
       }
 
-      return Response.json({ log: { ...result, sets } }, { status: 201 });
+      return Response.json(
+        { log: { ...result, sets }, personalRecords },
+        { status: 201 },
+      );
     }
 
     return Response.json({ error: "Unknown action." }, { status: 400 });

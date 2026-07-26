@@ -57,6 +57,7 @@ type WorkoutLog = {
   performedAt: string;
   sets?: Array<{
     exerciseName: string;
+    setNumber?: number;
     weight: number;
     reps: number;
   }>;
@@ -187,6 +188,22 @@ function hydrateExercise(exercise: Exercise): Exercise {
 function exercisePrescription(exercise: Exercise) {
   const hydrated = hydrateExercise(exercise);
   return `${hydrated.setCount} × ${hydrated.reps}`;
+}
+
+function plannedSetCount(exercise: Exercise) {
+  const count = Number.parseInt(hydrateExercise(exercise).setCount ?? "1", 10);
+  return Number.isFinite(count) ? Math.min(20, Math.max(1, count)) : 1;
+}
+
+function restToSeconds(rest = "90 sec") {
+  const value = Number.parseInt(rest, 10);
+  if (!Number.isFinite(value)) return 90;
+  return rest.includes("min") ? value * 60 : value;
+}
+
+function formatTimer(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 function exercisesFromWorkouts(workouts: Workout[]) {
@@ -437,6 +454,9 @@ export default function Home() {
     Record<string, { weight: string; reps: string }>
   >({});
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
+  const [progressExercise, setProgressExercise] = useState("");
+  const [timerLeft, setTimerLeft] = useState(0);
+  const [timerLabel, setTimerLabel] = useState("");
   const [profileId, setProfileId] = useState("");
   const [today, setToday] = useState("Today");
   const [saving, setSaving] = useState(false);
@@ -444,7 +464,19 @@ export default function Home() {
 
   const workout =
     recommendation.workouts[selectedWorkout] ?? recommendation.workouts[0];
-  const completedCount = Object.values(completed).filter(Boolean).length;
+  const completedSets = Object.values(completed).filter(Boolean).length;
+  const totalPlannedSets = workout.exercises.reduce(
+    (sum, exercise) => sum + plannedSetCount(exercise),
+    0,
+  );
+  const completedCount = workout.exercises.reduce((count, exercise, index) => {
+    const exerciseDone = Array.from(
+      { length: plannedSetCount(exercise) },
+      (_, setIndex) =>
+        completed[`${workout.day}-${workout.title}-${index}-${setIndex + 1}`],
+    ).some(Boolean);
+    return count + (exerciseDone ? 1 : 0);
+  }, 0);
   const weeklyTarget = recommendation.workouts.length;
   const weeklyDone = Math.min(logs.length, weeklyTarget);
   const weeklyPercent = Math.round((weeklyDone / weeklyTarget) * 100);
@@ -456,6 +488,29 @@ export default function Home() {
   const heaviestSet = loggedSets.reduce(
     (heaviest, set) => Math.max(heaviest, set.weight),
     0,
+  );
+  const exerciseNames = Array.from(
+    new Set(loggedSets.map((set) => set.exerciseName)),
+  ).sort();
+  const activeProgressExercise = progressExercise || exerciseNames[0] || "";
+  const exerciseProgress = logs
+    .slice()
+    .reverse()
+    .flatMap((log) => {
+      const sets = (log.sets ?? []).filter(
+        (set) =>
+          set.exerciseName.toLowerCase() ===
+          activeProgressExercise.toLowerCase(),
+      );
+      if (!sets.length) return [];
+      return [{
+        date: log.performedAt,
+        weight: Math.max(...sets.map((set) => set.weight)),
+      }];
+    });
+  const progressMax = Math.max(
+    1,
+    ...exerciseProgress.map((point) => point.weight),
   );
 
   useEffect(() => {
@@ -496,6 +551,23 @@ export default function Home() {
       .catch(() => setNotice("Working offline — changes may not be saved."));
   }, []);
 
+  useEffect(() => {
+    if (timerLeft <= 0) return;
+    const timeout = window.setTimeout(
+      () => setTimerLeft((current) => Math.max(0, current - 1)),
+      1000,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [timerLeft]);
+
+  useEffect(() => {
+    if (timerLeft !== 0 || !timerLabel) return;
+    setNotice(`Rest complete — ready for your next ${timerLabel} set.`);
+    setTimerLabel("");
+    const timeout = window.setTimeout(() => setNotice(""), 2800);
+    return () => window.clearTimeout(timeout);
+  }, [timerLeft, timerLabel]);
+
   const activityBars = useMemo(() => {
     const source = logs.slice(0, 7).reverse();
     return Array.from({ length: 7 }, (_, index) => {
@@ -512,7 +584,27 @@ export default function Home() {
     setSelectedWorkout(index);
     setCompleted({});
     setEntries({});
+    setTimerLeft(0);
+    setTimerLabel("");
     setView("workout");
+  }
+
+  function previousPerformance(exerciseName: string) {
+    for (const log of logs) {
+      const previous = (log.sets ?? [])
+        .filter(
+          (set) =>
+            set.exerciseName.toLowerCase() === exerciseName.toLowerCase(),
+        )
+        .sort((a, b) => (a.setNumber ?? 1) - (b.setNumber ?? 1));
+      if (previous.length) return previous;
+    }
+    return [];
+  }
+
+  function startRestTimer(exercise: Exercise) {
+    setTimerLeft(restToSeconds(exercise.rest));
+    setTimerLabel(exercise.name);
   }
 
   async function savePlan(next: Recommendation, nextProfile = profile) {
@@ -631,6 +723,33 @@ export default function Home() {
 
   async function logWorkout() {
     if (!profileId || completedCount === 0) return;
+    const completedSetPayload = workout.exercises.flatMap(
+      (exercise, exerciseIndex) => {
+        const baseKey = `${workout.day}-${workout.title}-${exerciseIndex}`;
+        return Array.from(
+          { length: plannedSetCount(exercise) },
+          (_, setIndex) => {
+            const setNumber = setIndex + 1;
+            const key = `${baseKey}-${setNumber}`;
+            const entry = entries[key];
+            const weight = Number(entry?.weight);
+            const reps = Number(entry?.reps);
+            if (!completed[key] || weight <= 0 || reps <= 0) return [];
+            return [{
+              exerciseName: exercise.name,
+              setNumber,
+              weight,
+              reps,
+            }];
+          },
+        ).flat();
+      },
+    );
+    if (completedSetPayload.length !== completedSets) {
+      setNotice("Add weight and reps before marking a set complete.");
+      window.setTimeout(() => setNotice(""), 2800);
+      return;
+    }
     setSaving(true);
     try {
       const response = await fetch("/api/fitness", {
@@ -643,14 +762,7 @@ export default function Home() {
           duration: workout.duration,
           exercisesCompleted: completedCount,
           totalExercises: workout.exercises.length,
-          sets: workout.exercises.flatMap((exercise) => {
-            const key = `${workout.title}-${exercise.name}`;
-            const entry = entries[key];
-            const weight = Number(entry?.weight);
-            const reps = Number(entry?.reps);
-            if (!completed[key] || weight <= 0 || reps <= 0) return [];
-            return [{ exerciseName: exercise.name, weight, reps }];
-          }),
+          sets: completedSetPayload,
         }),
       });
       if (!response.ok) throw new Error("Log failed");
@@ -658,7 +770,13 @@ export default function Home() {
       setLogs((current) => [data.log, ...current].slice(0, 20));
       setCompleted({});
       setEntries({});
-      setNotice("Workout saved to your history");
+      setTimerLeft(0);
+      setTimerLabel("");
+      setNotice(
+        data.personalRecords?.length
+          ? `New personal record: ${data.personalRecords.join(", ")}`
+          : "Workout saved to your history",
+      );
       setView("progress");
     } catch {
       setNotice("Could not save this workout. Please try again.");
@@ -1221,85 +1339,143 @@ export default function Home() {
                 <span>{workout.duration} min · {workout.exercises.length} exercises</span>
               </div>
               <div className="sessionProgress">
-                <strong>{completedCount}/{workout.exercises.length}</strong>
-                <span>completed</span>
+                <strong>{completedSets}/{totalPlannedSets}</strong>
+                <span>sets completed</span>
               </div>
             </div>
 
             <div className="loggerLayout">
               <section className="loggerPanel">
-                <div className="loggerHeader">
-                  <span>EXERCISE</span>
-                  <span>WEIGHT</span>
-                  <span>REPS</span>
-                  <span>DONE</span>
-                </div>
                 {workout.exercises.map((exercise, index) => {
-                  const key = `${workout.title}-${exercise.name}`;
-                  const isDone = Boolean(completed[key]);
-                  const entry = entries[key] ?? { weight: "", reps: "" };
+                  const baseKey = `${workout.day}-${workout.title}-${index}`;
                   const visual = getExerciseVisual(exercise);
+                  const previous = previousPerformance(exercise.name);
+                  const exerciseDone = Array.from(
+                    { length: plannedSetCount(exercise) },
+                    (_, setIndex) =>
+                      completed[`${baseKey}-${setIndex + 1}`],
+                  ).every(Boolean);
                   return (
-                    <div className={isDone ? "loggerRow done" : "loggerRow"} key={key}>
-                      <span
-                        aria-label={visual.label}
-                        className="exerciseVisual"
-                        role="img"
-                        style={{
-                          "--exercise-position": visual.position,
-                        } as React.CSSProperties}
-                      >
-                        <span className="exerciseNumber">
-                          {String(index + 1).padStart(2, "0")}
+                    <div
+                      className={exerciseDone ? "loggerExerciseBlock done" : "loggerExerciseBlock"}
+                      key={baseKey}
+                    >
+                      <div className="loggerExerciseTop">
+                        <span
+                          aria-label={visual.label}
+                          className="exerciseVisual"
+                          role="img"
+                          style={{
+                            "--exercise-position": visual.position,
+                          } as React.CSSProperties}
+                        >
+                          <span className="exerciseNumber">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
                         </span>
-                      </span>
-                      <span className="loggerExercise">
-                        <strong>{exercise.name}</strong>
-                        <small>
-                          {exercisePrescription(exercise)} · {exercise.rest ?? "90 sec"} rest
-                        </small>
-                      </span>
-                      <label>
-                        <span className="srOnly">Weight for {exercise.name}</span>
-                        <input
-                          inputMode="decimal"
-                          onChange={(event) =>
-                            setEntries((current) => ({
-                              ...current,
-                              [key]: { ...entry, weight: event.target.value },
-                            }))
-                          }
-                          placeholder="kg"
-                          value={entry.weight}
-                        />
-                      </label>
-                      <label>
-                        <span className="srOnly">Reps for {exercise.name}</span>
-                        <input
-                          inputMode="numeric"
-                          onChange={(event) =>
-                            setEntries((current) => ({
-                              ...current,
-                              [key]: { ...entry, reps: event.target.value },
-                            }))
-                          }
-                          placeholder="reps"
-                          value={entry.reps}
-                        />
-                      </label>
-                      <label className="doneControl">
-                        <input
-                          checked={isDone}
-                          onChange={(event) =>
-                            setCompleted((current) => ({
-                              ...current,
-                              [key]: event.target.checked,
-                            }))
-                          }
-                          type="checkbox"
-                        />
-                        <span>{isDone ? "✓" : ""}</span>
-                      </label>
+                        <span className="loggerExercise">
+                          <strong>{exercise.name}</strong>
+                          <small>
+                            Target {exercisePrescription(exercise)} · {exercise.rest ?? "90 sec"} rest
+                          </small>
+                          <span className="previousPerformance">
+                            {previous.length
+                              ? `Last: ${previous
+                                  .slice(0, 4)
+                                  .map((set) => `${set.weight} kg × ${set.reps}`)
+                                  .join(" · ")}`
+                              : "No previous performance yet"}
+                          </span>
+                        </span>
+                      </div>
+                      <div className="setLoggerHead">
+                        <span>SET</span>
+                        <span>PREVIOUS</span>
+                        <span>KG</span>
+                        <span>REPS</span>
+                        <span>DONE</span>
+                      </div>
+                      <div className="setLoggerRows">
+                        {Array.from(
+                          { length: plannedSetCount(exercise) },
+                          (_, setIndex) => {
+                            const setNumber = setIndex + 1;
+                            const key = `${baseKey}-${setNumber}`;
+                            const isDone = Boolean(completed[key]);
+                            const entry = entries[key] ?? {
+                              weight: "",
+                              reps: "",
+                            };
+                            const previousSet = previous[setIndex];
+                            return (
+                              <div
+                                className={isDone ? "setLoggerRow done" : "setLoggerRow"}
+                                key={key}
+                              >
+                                <span className="setNumber">{setNumber}</span>
+                                <span className="previousSet">
+                                  {previousSet
+                                    ? `${previousSet.weight} × ${previousSet.reps}`
+                                    : "—"}
+                                </span>
+                                <label>
+                                  <span className="srOnly">
+                                    Weight for {exercise.name}, set {setNumber}
+                                  </span>
+                                  <input
+                                    inputMode="decimal"
+                                    onChange={(event) =>
+                                      setEntries((current) => ({
+                                        ...current,
+                                        [key]: {
+                                          ...entry,
+                                          weight: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    placeholder={previousSet ? String(previousSet.weight) : "kg"}
+                                    value={entry.weight}
+                                  />
+                                </label>
+                                <label>
+                                  <span className="srOnly">
+                                    Reps for {exercise.name}, set {setNumber}
+                                  </span>
+                                  <input
+                                    inputMode="numeric"
+                                    onChange={(event) =>
+                                      setEntries((current) => ({
+                                        ...current,
+                                        [key]: {
+                                          ...entry,
+                                          reps: event.target.value,
+                                        },
+                                      }))
+                                    }
+                                    placeholder={previousSet ? String(previousSet.reps) : exercise.reps}
+                                    value={entry.reps}
+                                  />
+                                </label>
+                                <label className="doneControl">
+                                  <input
+                                    checked={isDone}
+                                    onChange={(event) => {
+                                      const checked = event.target.checked;
+                                      setCompleted((current) => ({
+                                        ...current,
+                                        [key]: checked,
+                                      }));
+                                      if (checked) startRestTimer(exercise);
+                                    }}
+                                    type="checkbox"
+                                  />
+                                  <span>{isDone ? "✓" : ""}</span>
+                                </label>
+                              </div>
+                            );
+                          },
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -1309,6 +1485,8 @@ export default function Home() {
                     onClick={() => {
                       setCompleted({});
                       setEntries({});
+                      setTimerLeft(0);
+                      setTimerLabel("");
                     }}
                     type="button"
                   >
@@ -1326,20 +1504,57 @@ export default function Home() {
               </section>
 
               <aside className="sessionAside">
+                <div className={timerLeft > 0 ? "restTimer active" : "restTimer"}>
+                  <p className="eyebrow">REST TIMER</p>
+                  <strong>{timerLeft > 0 ? formatTimer(timerLeft) : "0:00"}</strong>
+                  <span>
+                    {timerLeft > 0
+                      ? `After ${timerLabel}`
+                      : "Completing a set starts the timer"}
+                  </span>
+                  <div>
+                    <button
+                      disabled={timerLeft <= 0}
+                      onClick={() =>
+                        setTimerLeft((current) => Math.max(0, current - 15))
+                      }
+                      type="button"
+                    >
+                      −15s
+                    </button>
+                    <button
+                      disabled={timerLeft <= 0}
+                      onClick={() => setTimerLeft((current) => current + 15)}
+                      type="button"
+                    >
+                      +15s
+                    </button>
+                    <button
+                      disabled={timerLeft <= 0}
+                      onClick={() => {
+                        setTimerLeft(0);
+                        setTimerLabel("");
+                      }}
+                      type="button"
+                    >
+                      Skip
+                    </button>
+                  </div>
+                </div>
                 <div className="sessionSummary">
                   <p className="eyebrow">SESSION SUMMARY</p>
                   <div
                     className="sessionRing"
                     style={{
-                      "--progress": `${(completedCount / workout.exercises.length) * 360}deg`,
+                      "--progress": `${(completedSets / totalPlannedSets) * 360}deg`,
                     } as React.CSSProperties}
                   >
-                    <span>{Math.round((completedCount / workout.exercises.length) * 100)}%</span>
+                    <span>{Math.round((completedSets / totalPlannedSets) * 100)}%</span>
                   </div>
                   <div className="summaryRows">
                     <p><span>Duration</span><strong>{workout.duration} min</strong></p>
-                    <p><span>Completed</span><strong>{completedCount}</strong></p>
-                    <p><span>Remaining</span><strong>{workout.exercises.length - completedCount}</strong></p>
+                    <p><span>Sets completed</span><strong>{completedSets}</strong></p>
+                    <p><span>Sets remaining</span><strong>{totalPlannedSets - completedSets}</strong></p>
                   </div>
                 </div>
                 <div className="tipCard">
@@ -1405,6 +1620,86 @@ export default function Home() {
                 </div>
               </article>
             </div>
+
+            <section className="liftProgressPanel">
+              <div className="panelTitle">
+                <div>
+                  <p className="eyebrow">EXERCISE PROGRESS</p>
+                  <h2>Best weight over time</h2>
+                </div>
+                {exerciseNames.length > 0 && (
+                  <label className="progressExerciseSelect">
+                    <span className="srOnly">Choose an exercise</span>
+                    <select
+                      onChange={(event) =>
+                        setProgressExercise(event.target.value)
+                      }
+                      value={activeProgressExercise}
+                    >
+                      {exerciseNames.map((name) => (
+                        <option key={name}>{name}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+              {exerciseProgress.length ? (
+                <div className="liftProgressBody">
+                  <div
+                    aria-label={`${activeProgressExercise} best weight history`}
+                    className="liftBars"
+                  >
+                    {exerciseProgress.slice(-10).map((point, index) => (
+                      <div key={`${point.date}-${index}`}>
+                        <strong>{point.weight} kg</strong>
+                        <span
+                          style={{
+                            height: `${Math.max(12, (point.weight / progressMax) * 100)}%`,
+                          }}
+                        />
+                        <small>{formatDate(point.date)}</small>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="liftProgressStats">
+                    <div>
+                      <span>LATEST</span>
+                      <strong>
+                        {exerciseProgress.at(-1)?.weight ?? 0}
+                        <small> kg</small>
+                      </strong>
+                    </div>
+                    <div>
+                      <span>PERSONAL BEST</span>
+                      <strong>
+                        {progressMax}
+                        <small> kg</small>
+                      </strong>
+                    </div>
+                    <div>
+                      <span>CHANGE</span>
+                      <strong>
+                        {exerciseProgress.length > 1
+                          ? `${exerciseProgress.at(-1)!.weight - exerciseProgress[0].weight >= 0 ? "+" : ""}${exerciseProgress.at(-1)!.weight - exerciseProgress[0].weight}`
+                          : "—"}
+                        {exerciseProgress.length > 1 && <small> kg</small>}
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="emptyLiftProgress">
+                  <strong>No weight history yet</strong>
+                  <p>
+                    Complete sets with weight and reps to unlock exercise
+                    progress charts and personal records.
+                  </p>
+                  <button onClick={() => openWorkout()} type="button">
+                    Log your first sets
+                  </button>
+                </div>
+              )}
+            </section>
 
             <section className="historyPanel">
               <div className="panelTitle">

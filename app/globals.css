@@ -704,6 +704,7 @@ input:focus-visible {
 .sessionSummary,
 .chartPanel,
 .progressSummary,
+.liftProgressPanel,
 .historyPanel {
   background: var(--card);
   border: 1px solid var(--line);
@@ -1466,6 +1467,110 @@ input:focus-visible {
   grid-template-columns: minmax(0, 1fr) 270px;
 }
 
+.loggerExerciseBlock {
+  border-bottom: 1px solid var(--line);
+  padding: 16px 20px 18px;
+}
+
+.loggerExerciseBlock:last-of-type {
+  border-bottom: 0;
+}
+
+.loggerExerciseBlock.done {
+  background: #fafaf6;
+}
+
+.loggerExerciseTop {
+  align-items: center;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 72px 1fr;
+  margin-bottom: 14px;
+}
+
+.loggerExerciseBlock.done .exerciseVisual {
+  filter: grayscale(1);
+  opacity: .58;
+}
+
+.loggerExerciseBlock.done .loggerExercise > strong {
+  color: var(--muted);
+}
+
+.previousPerformance {
+  color: #668449;
+  font-family: var(--font-mono), monospace;
+  font-size: 7px;
+  margin-top: 7px;
+}
+
+.setLoggerHead,
+.setLoggerRow {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 40px minmax(90px, 1fr) 90px 90px 45px;
+}
+
+.setLoggerHead {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 6px;
+  font-weight: 700;
+  padding: 0 4px 6px;
+}
+
+.setLoggerRow {
+  border-radius: 7px;
+  min-height: 52px;
+  padding: 6px 4px;
+}
+
+.setLoggerRow:nth-child(odd) {
+  background: #f8f8f4;
+}
+
+.setLoggerRow.done {
+  background: #eff5e8;
+}
+
+.setNumber {
+  align-items: center;
+  background: #ecece7;
+  border-radius: 5px;
+  display: flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.setLoggerRow.done .setNumber {
+  background: #d8e8c8;
+  color: #557733;
+}
+
+.previousSet {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+}
+
+.setLoggerRow input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  height: 38px;
+  min-width: 0;
+  padding: 0 9px;
+  width: 100%;
+}
+
+.setLoggerRow input:focus {
+  border-color: var(--orange);
+  outline: 2px solid color-mix(in srgb, var(--orange) 20%, transparent);
+}
+
 .loggerHeader {
   align-items: center;
   border-bottom: 1px solid var(--line);
@@ -1594,6 +1699,60 @@ input:focus-visible {
   gap: 13px;
 }
 
+.restTimer {
+  background: var(--ink);
+  border: 1px solid #292a26;
+  border-radius: 9px;
+  color: #fff;
+  padding: 18px;
+  text-align: center;
+}
+
+.restTimer .eyebrow {
+  color: #969990;
+}
+
+.restTimer > strong {
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 34px;
+  letter-spacing: -.05em;
+  margin: 8px 0 4px;
+}
+
+.restTimer.active > strong {
+  color: #ff8b62;
+}
+
+.restTimer > span {
+  color: #969990;
+  display: block;
+  font-size: 7px;
+  min-height: 20px;
+}
+
+.restTimer > div {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 12px;
+}
+
+.restTimer button {
+  background: #282925;
+  border: 1px solid #393b35;
+  border-radius: 5px;
+  color: #d4d5cf;
+  cursor: pointer;
+  font-size: 7px;
+  height: 32px;
+}
+
+.restTimer button:disabled {
+  color: #595b55;
+  cursor: default;
+}
+
 .sessionSummary {
   padding: 20px;
 }
@@ -1667,6 +1826,135 @@ input:focus-visible {
   gap: 16px;
   grid-template-columns: 1fr 290px;
   margin-bottom: 16px;
+}
+
+.liftProgressPanel {
+  margin-bottom: 16px;
+}
+
+.progressExerciseSelect select {
+  appearance: none;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--ink) 50%) calc(100% - 17px) 17px / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--ink) 50%, transparent 50%) calc(100% - 12px) 17px / 5px 5px no-repeat,
+    #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 8px;
+  min-height: 39px;
+  min-width: 180px;
+  padding: 0 34px 0 11px;
+}
+
+.liftProgressBody {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  padding: 24px;
+}
+
+.liftBars {
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  gap: 9px;
+  height: 210px;
+  padding: 25px 6px 0;
+}
+
+.liftBars > div {
+  align-items: center;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  height: 100%;
+  justify-content: flex-end;
+  min-width: 32px;
+}
+
+.liftBars > div > strong {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 6px;
+  margin-bottom: 5px;
+}
+
+.liftBars > div > span {
+  background: linear-gradient(180deg, var(--orange), #d44b1e);
+  border-radius: 5px 5px 0 0;
+  min-height: 12px;
+  width: min(38px, 78%);
+}
+
+.liftBars > div > small {
+  color: var(--muted);
+  font-size: 6px;
+  margin-top: 7px;
+}
+
+.liftProgressStats {
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 24px;
+}
+
+.liftProgressStats > div {
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  padding: 14px 0;
+}
+
+.liftProgressStats > div:last-child {
+  border-bottom: 0;
+}
+
+.liftProgressStats span {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 6px;
+  margin-bottom: 5px;
+}
+
+.liftProgressStats strong {
+  font-size: 20px;
+}
+
+.liftProgressStats strong small {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.emptyLiftProgress {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  padding: 44px 20px;
+  text-align: center;
+}
+
+.emptyLiftProgress strong {
+  font-size: 14px;
+}
+
+.emptyLiftProgress p {
+  color: var(--muted);
+  font-size: 8px;
+  line-height: 1.6;
+  margin: 7px 0 16px;
+  max-width: 360px;
+}
+
+.emptyLiftProgress button {
+  background: var(--ink);
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  min-height: 38px;
+  padding: 0 14px;
 }
 
 .barChart {
@@ -1988,6 +2276,33 @@ input:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .setLoggerHead,
+  .setLoggerRow {
+    grid-template-columns: 36px minmax(72px, 1fr) 72px 72px 36px;
+  }
+
+  .liftProgressBody {
+    grid-template-columns: 1fr;
+  }
+
+  .liftProgressStats {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 12px 0 0;
+  }
+
+  .liftProgressStats > div {
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+    padding: 10px 16px;
+  }
+
+  .liftProgressStats > div:last-child {
+    border-right: 0;
+  }
+
   .loggerHeader {
     display: none;
   }
@@ -2188,6 +2503,75 @@ input:focus-visible {
   .loggerRow {
     align-items: start;
     grid-template-columns: 68px 1fr 30px;
+  }
+
+  .loggerExerciseBlock {
+    padding-inline: 12px;
+  }
+
+  .loggerExerciseTop {
+    grid-template-columns: 60px 1fr;
+  }
+
+  .loggerExerciseTop .exerciseVisual {
+    height: 50px;
+    width: 60px;
+  }
+
+  .setLoggerHead,
+  .setLoggerRow {
+    gap: 6px;
+    grid-template-columns: 30px 58px minmax(55px, 1fr) minmax(55px, 1fr) 30px;
+  }
+
+  .setLoggerHead {
+    font-size: 5px;
+  }
+
+  .setLoggerRow input {
+    font-size: 8px;
+    height: 36px;
+    padding-inline: 6px;
+  }
+
+  .setLoggerRow .doneControl span {
+    height: 24px;
+    width: 24px;
+  }
+
+  .previousSet {
+    font-size: 6px;
+  }
+
+  .progressExerciseSelect,
+  .progressExerciseSelect select {
+    width: 100%;
+  }
+
+  .liftProgressPanel .panelTitle {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .liftProgressBody {
+    padding: 16px 12px;
+  }
+
+  .liftBars {
+    overflow-x: auto;
+  }
+
+  .liftBars > div {
+    flex: 0 0 45px;
+  }
+
+  .liftProgressStats > div {
+    padding-inline: 9px;
+  }
+
+  .liftProgressStats strong {
+    font-size: 16px;
   }
 
   .loggerRow > label:not(.doneControl) {

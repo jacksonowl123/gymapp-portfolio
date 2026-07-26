@@ -26,6 +26,7 @@ export const workoutSets = sqliteTable("workout_sets", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   logId: integer("log_id").notNull(),
   exerciseName: text("exercise_name").notNull(),
+  setNumber: integer("set_number").notNull().default(1),
   weight: real("weight").notNull(),
   reps: integer("reps").notNull(),
 });

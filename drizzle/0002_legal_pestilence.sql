@@ -1,0 +1,1 @@
+ALTER TABLE `workout_sets` ADD `set_number` integer DEFAULT 1 NOT NULL;
