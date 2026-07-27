@@ -638,7 +638,11 @@ export default function Home() {
     setTimerLabel(exercise.name);
   }
 
-  async function savePlan(next: Recommendation, nextProfile = profile) {
+  async function savePlan(
+    next: Recommendation,
+    nextProfile = profile,
+    successMessage = "Plan saved",
+  ) {
     if (!profileId) return;
     setSaving(true);
     try {
@@ -653,7 +657,7 @@ export default function Home() {
         }),
       });
       if (!response.ok) throw new Error("Save failed");
-      setNotice("Plan saved");
+      setNotice(successMessage);
     } catch {
       setNotice("Could not save the plan. Please try again.");
     } finally {
@@ -662,17 +666,23 @@ export default function Home() {
     }
   }
 
-  function saveManualPlan() {
-    const next = buildManualPlan(weekSchedule, dayExercises);
+  function persistManualPlan(
+    exercisesByDay: Record<string, Exercise[]>,
+    options: {
+      resetWorkout?: boolean;
+      successMessage?: string;
+    } = {},
+  ) {
+    const next = buildManualPlan(weekSchedule, exercisesByDay);
     if (next.workouts.length === 0) {
       setNotice("Choose at least one training day before saving.");
       window.setTimeout(() => setNotice(""), 2600);
-      return;
+      return false;
     }
     if (next.workouts.some((item) => item.exercises.length === 0)) {
       setNotice("Add at least one exercise to every training day.");
       window.setTimeout(() => setNotice(""), 2600);
-      return;
+      return false;
     }
     if (
       next.workouts.some((item) =>
@@ -684,15 +694,26 @@ export default function Home() {
     ) {
       setNotice("Add sets and reps for every exercise before saving.");
       window.setTimeout(() => setNotice(""), 2600);
-      return;
+      return false;
     }
     const nextProfile = { ...profile, days: next.workouts.length };
     setProfile(nextProfile);
     setRecommendation(next);
-    setSelectedWorkout(0);
-    setCompleted({});
-    setEntries({});
-    void savePlan(next, nextProfile);
+    if (options.resetWorkout !== false) {
+      setSelectedWorkout(0);
+      setCompleted({});
+      setEntries({});
+    }
+    void savePlan(
+      next,
+      nextProfile,
+      options.successMessage ?? "Plan saved",
+    );
+    return true;
+  }
+
+  function saveManualPlan() {
+    persistManualPlan(dayExercises);
   }
 
   function changeDayAssignment(day: string, assignment: DayAssignment) {
@@ -753,20 +774,23 @@ export default function Home() {
   }
 
   function moveDayExercise(day: string, fromIndex: number, toIndex: number) {
-    setDayExercises((current) => {
-      const exercises = [...(current[day] ?? [])];
-      if (
-        fromIndex === toIndex ||
-        fromIndex < 0 ||
-        toIndex < 0 ||
-        fromIndex >= exercises.length ||
-        toIndex >= exercises.length
-      ) {
-        return current;
-      }
-      const [moved] = exercises.splice(fromIndex, 1);
-      exercises.splice(toIndex, 0, moved);
-      return { ...current, [day]: exercises };
+    const exercises = [...(dayExercises[day] ?? [])];
+    if (
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= exercises.length ||
+      toIndex >= exercises.length
+    ) {
+      return;
+    }
+    const [moved] = exercises.splice(fromIndex, 1);
+    exercises.splice(toIndex, 0, moved);
+    const nextDayExercises = { ...dayExercises, [day]: exercises };
+    setDayExercises(nextDayExercises);
+    persistManualPlan(nextDayExercises, {
+      resetWorkout: false,
+      successMessage: "Exercise order saved",
     });
   }
 
