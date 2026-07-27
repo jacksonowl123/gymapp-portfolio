@@ -449,6 +449,9 @@ export default function Home() {
   );
   const [expandedDay, setExpandedDay] = useState("MON");
   const [selectedWorkout, setSelectedWorkout] = useState(0);
+  const [pendingWorkoutSwitch, setPendingWorkoutSwitch] = useState<number | null>(
+    null,
+  );
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
   const [entries, setEntries] = useState<
     Record<string, { weight: string; reps: string }>
@@ -587,6 +590,26 @@ export default function Home() {
     setTimerLeft(0);
     setTimerLabel("");
     setView("workout");
+  }
+
+  function selectWorkout(index: number) {
+    if (index === selectedWorkout) return;
+    const hasDraft =
+      completedSets > 0 ||
+      Object.values(entries).some(
+        (entry) => entry.weight.trim() || entry.reps.trim(),
+      );
+    if (hasDraft) {
+      setPendingWorkoutSwitch(index);
+      return;
+    }
+    openWorkout(index);
+  }
+
+  function confirmWorkoutSwitch() {
+    if (pendingWorkoutSwitch === null) return;
+    openWorkout(pendingWorkoutSwitch);
+    setPendingWorkoutSwitch(null);
   }
 
   function previousPerformance(exerciseName: string) {
@@ -1344,6 +1367,50 @@ export default function Home() {
               </div>
             </div>
 
+            <section className="workoutChooser">
+              <div className="workoutChooserHeader">
+                <div>
+                  <p className="eyebrow">CHOOSE YOUR SESSION</p>
+                  <h2>Which workout are you doing?</h2>
+                </div>
+                <button onClick={() => setView("plan")} type="button">
+                  Edit exercises in My Plan
+                </button>
+              </div>
+              <div className="workoutChoiceList">
+                {recommendation.workouts.map((item, index) => (
+                  <button
+                    aria-pressed={index === selectedWorkout}
+                    className={index === selectedWorkout ? "active" : ""}
+                    key={`${item.day}-${item.title}`}
+                    onClick={() => selectWorkout(index)}
+                    type="button"
+                  >
+                    <span
+                      className="workoutChoiceDay"
+                      style={{ "--accent": item.accent } as React.CSSProperties}
+                    >
+                      {item.day}
+                    </span>
+                    <span>
+                      <strong>{item.title}</strong>
+                      <small>
+                        {item.exercises.length} exercises ·{" "}
+                        {item.exercises.reduce(
+                          (sum, exercise) => sum + plannedSetCount(exercise),
+                          0,
+                        )}{" "}
+                        sets
+                      </small>
+                    </span>
+                    <span className="workoutChoiceState">
+                      {index === selectedWorkout ? "SELECTED" : "CHOOSE"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </section>
+
             <div className="loggerLayout">
               <section className="loggerPanel">
                 {workout.exercises.map((exercise, index) => {
@@ -1749,6 +1816,41 @@ export default function Home() {
           </button>
         ))}
       </nav>
+
+      {pendingWorkoutSwitch !== null && (
+        <div
+          aria-labelledby="switch-workout-title"
+          aria-modal="true"
+          className="modalBackdrop"
+          role="dialog"
+        >
+          <div className="confirmModal">
+            <span className="confirmIcon">↻</span>
+            <p className="eyebrow">CHANGE WORKOUT</p>
+            <h2 id="switch-workout-title">Switch to another session?</h2>
+            <p>
+              Your unsaved weights, reps and completed sets in{" "}
+              <strong>{workout.title}</strong> will be cleared.
+            </p>
+            <div>
+              <button
+                className="secondaryAction"
+                onClick={() => setPendingWorkoutSwitch(null)}
+                type="button"
+              >
+                Keep current workout
+              </button>
+              <button
+                className="primaryAction"
+                onClick={confirmWorkoutSwitch}
+                type="button"
+              >
+                Switch and clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div
         aria-live="polite"
