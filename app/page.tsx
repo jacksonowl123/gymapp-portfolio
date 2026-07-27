@@ -448,6 +448,14 @@ export default function Home() {
     () => exercisesFromWorkouts(buildRecommendation(defaultProfile).workouts),
   );
   const [expandedDay, setExpandedDay] = useState("MON");
+  const [draggedExercise, setDraggedExercise] = useState<{
+    day: string;
+    index: number;
+  } | null>(null);
+  const [dragTarget, setDragTarget] = useState<{
+    day: string;
+    index: number;
+  } | null>(null);
   const [selectedWorkout, setSelectedWorkout] = useState(0);
   const [pendingWorkoutSwitch, setPendingWorkoutSwitch] = useState<number | null>(
     null,
@@ -742,6 +750,32 @@ export default function Home() {
         (_, exerciseIndex) => exerciseIndex !== index,
       ),
     }));
+  }
+
+  function moveDayExercise(day: string, fromIndex: number, toIndex: number) {
+    setDayExercises((current) => {
+      const exercises = [...(current[day] ?? [])];
+      if (
+        fromIndex === toIndex ||
+        fromIndex < 0 ||
+        toIndex < 0 ||
+        fromIndex >= exercises.length ||
+        toIndex >= exercises.length
+      ) {
+        return current;
+      }
+      const [moved] = exercises.splice(fromIndex, 1);
+      exercises.splice(toIndex, 0, moved);
+      return { ...current, [day]: exercises };
+    });
+  }
+
+  function dropDayExercise(day: string, toIndex: number) {
+    if (draggedExercise?.day === day) {
+      moveDayExercise(day, draggedExercise.index, toIndex);
+    }
+    setDraggedExercise(null);
+    setDragTarget(null);
   }
 
   async function logWorkout() {
@@ -1204,19 +1238,68 @@ export default function Home() {
                         {isExpanded && (
                           <div className="exerciseEditor">
                             <div className="exerciseEditorHead">
+                              <span />
                               <span>EXERCISE</span>
                               <span>SETS</span>
                               <span>REPS</span>
                               <span>REST</span>
-                              <span />
+                              <span>ORDER</span>
                             </div>
                             {exercises.map((exercise, exerciseIndex) => {
                               const hydrated = hydrateExercise(exercise);
+                              const isDragging =
+                                draggedExercise?.day === day &&
+                                draggedExercise.index === exerciseIndex;
+                              const isDropTarget =
+                                dragTarget?.day === day &&
+                                dragTarget.index === exerciseIndex &&
+                                !isDragging;
                               return (
                                 <div
-                                  className="exerciseEditRow"
+                                  className={[
+                                    "exerciseEditRow",
+                                    isDragging ? "dragging" : "",
+                                    isDropTarget ? "dropTarget" : "",
+                                  ].filter(Boolean).join(" ")}
                                   key={`${day}-${exerciseIndex}`}
+                                  onDragOver={(event) => {
+                                    if (draggedExercise?.day !== day) return;
+                                    event.preventDefault();
+                                    event.dataTransfer.dropEffect = "move";
+                                    setDragTarget({
+                                      day,
+                                      index: exerciseIndex,
+                                    });
+                                  }}
+                                  onDrop={(event) => {
+                                    event.preventDefault();
+                                    dropDayExercise(day, exerciseIndex);
+                                  }}
                                 >
+                                  <button
+                                    aria-label={`Drag ${hydrated.name || `exercise ${exerciseIndex + 1}`} to reorder`}
+                                    className="dragExercise"
+                                    draggable
+                                    onDragEnd={() => {
+                                      setDraggedExercise(null);
+                                      setDragTarget(null);
+                                    }}
+                                    onDragStart={(event) => {
+                                      event.dataTransfer.effectAllowed = "move";
+                                      event.dataTransfer.setData(
+                                        "text/plain",
+                                        `${day}-${exerciseIndex}`,
+                                      );
+                                      setDraggedExercise({
+                                        day,
+                                        index: exerciseIndex,
+                                      });
+                                    }}
+                                    title="Drag to reorder"
+                                    type="button"
+                                  >
+                                    ⠿
+                                  </button>
                                   <label className="exerciseNameField">
                                     <span className="fieldCaption">Exercise</span>
                                     <input
@@ -1285,16 +1368,48 @@ export default function Home() {
                                       )}
                                     </select>
                                   </label>
-                                  <button
-                                    aria-label={`Remove ${hydrated.name || `exercise ${exerciseIndex + 1}`}`}
-                                    className="removeExercise"
-                                    onClick={() =>
-                                      removeDayExercise(day, exerciseIndex)
-                                    }
-                                    type="button"
-                                  >
-                                    ×
-                                  </button>
+                                  <div className="exerciseOrderActions">
+                                    <button
+                                      aria-label={`Move ${hydrated.name || `exercise ${exerciseIndex + 1}`} up`}
+                                      disabled={exerciseIndex === 0}
+                                      onClick={() =>
+                                        moveDayExercise(
+                                          day,
+                                          exerciseIndex,
+                                          exerciseIndex - 1,
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      ↑
+                                    </button>
+                                    <button
+                                      aria-label={`Move ${hydrated.name || `exercise ${exerciseIndex + 1}`} down`}
+                                      disabled={
+                                        exerciseIndex === exercises.length - 1
+                                      }
+                                      onClick={() =>
+                                        moveDayExercise(
+                                          day,
+                                          exerciseIndex,
+                                          exerciseIndex + 1,
+                                        )
+                                      }
+                                      type="button"
+                                    >
+                                      ↓
+                                    </button>
+                                    <button
+                                      aria-label={`Remove ${hydrated.name || `exercise ${exerciseIndex + 1}`}`}
+                                      className="removeExercise"
+                                      onClick={() =>
+                                        removeDayExercise(day, exerciseIndex)
+                                      }
+                                      type="button"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
                                 </div>
                               );
                             })}
