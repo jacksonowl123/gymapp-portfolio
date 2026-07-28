@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 type Goal = "Build muscle" | "Get stronger" | "Lose fat" | "Move better";
 type Experience = "Beginner" | "Intermediate" | "Advanced";
 type Equipment = "Full gym" | "Dumbbells only" | "Bodyweight";
-type View = "dashboard" | "plan" | "workout" | "progress";
+type View = "dashboard" | "plan" | "library" | "workout" | "progress";
 type TrainingType =
   | "upper"
   | "lower"
@@ -30,6 +30,12 @@ type Exercise = {
   setCount?: string;
   reps?: string;
   rest?: string;
+};
+
+type LibraryExercise = Exercise & {
+  id: string;
+  equipment: string;
+  difficulty: Experience;
 };
 
 type Workout = {
@@ -116,6 +122,67 @@ const exerciseLibrary = {
     ["Suitcase carry", "3 × 30 m", "Core"],
   ],
 } satisfies Record<string, string[][]>;
+
+const exerciseCatalog: LibraryExercise[] = [
+  { id: "bench-press", name: "Bench press", focus: "Chest", equipment: "Barbell", difficulty: "Intermediate", sets: "4 × 6–8", setCount: "4", reps: "6–8", rest: "2 min" },
+  { id: "incline-dumbbell-press", name: "Incline dumbbell press", focus: "Chest", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 8–10", setCount: "3", reps: "8–10", rest: "90 sec" },
+  { id: "dumbbell-bench-press", name: "Dumbbell bench press", focus: "Chest", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 8–12", setCount: "3", reps: "8–12", rest: "90 sec" },
+  { id: "machine-chest-press", name: "Machine chest press", focus: "Chest", equipment: "Machine", difficulty: "Beginner", sets: "3 × 10–12", setCount: "3", reps: "10–12", rest: "90 sec" },
+  { id: "push-up", name: "Push-up", focus: "Chest", equipment: "Bodyweight", difficulty: "Beginner", sets: "3 × 8–15", setCount: "3", reps: "8–15", rest: "60 sec" },
+  { id: "cable-fly", name: "Cable fly", focus: "Chest", equipment: "Cable", difficulty: "Beginner", sets: "3 × 12–15", setCount: "3", reps: "12–15", rest: "60 sec" },
+  { id: "lat-pulldown", name: "Lat pulldown", focus: "Back", equipment: "Cable", difficulty: "Beginner", sets: "3 × 8–12", setCount: "3", reps: "8–12", rest: "90 sec" },
+  { id: "pull-up", name: "Pull-up", focus: "Back", equipment: "Bodyweight", difficulty: "Intermediate", sets: "3 × 5–10", setCount: "3", reps: "5–10", rest: "2 min" },
+  { id: "seated-cable-row", name: "Seated cable row", focus: "Back", equipment: "Cable", difficulty: "Beginner", sets: "3 × 10–12", setCount: "3", reps: "10–12", rest: "90 sec" },
+  { id: "one-arm-row", name: "One-arm dumbbell row", focus: "Back", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 10 / side", setCount: "3", reps: "10 / side", rest: "90 sec" },
+  { id: "chest-supported-row", name: "Chest-supported row", focus: "Back", equipment: "Dumbbells", difficulty: "Beginner", sets: "4 × 8–10", setCount: "4", reps: "8–10", rest: "90 sec" },
+  { id: "face-pull", name: "Face pull", focus: "Back", equipment: "Cable", difficulty: "Beginner", sets: "3 × 12–15", setCount: "3", reps: "12–15", rest: "60 sec" },
+  { id: "overhead-press", name: "Overhead press", focus: "Shoulders", equipment: "Barbell", difficulty: "Intermediate", sets: "4 × 6–8", setCount: "4", reps: "6–8", rest: "2 min" },
+  { id: "dumbbell-shoulder-press", name: "Dumbbell shoulder press", focus: "Shoulders", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 8–10", setCount: "3", reps: "8–10", rest: "90 sec" },
+  { id: "arnold-press", name: "Arnold press", focus: "Shoulders", equipment: "Dumbbells", difficulty: "Intermediate", sets: "3 × 8–12", setCount: "3", reps: "8–12", rest: "90 sec" },
+  { id: "lateral-raise", name: "Lateral raise", focus: "Shoulders", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 12–15", setCount: "3", reps: "12–15", rest: "60 sec" },
+  { id: "reverse-fly", name: "Reverse fly", focus: "Shoulders", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 12–15", setCount: "3", reps: "12–15", rest: "60 sec" },
+  { id: "barbell-curl", name: "Barbell curl", focus: "Biceps", equipment: "Barbell", difficulty: "Beginner", sets: "3 × 8–12", setCount: "3", reps: "8–12", rest: "60 sec" },
+  { id: "dumbbell-curl", name: "Dumbbell curl", focus: "Biceps", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 10–12", setCount: "3", reps: "10–12", rest: "60 sec" },
+  { id: "hammer-curl", name: "Hammer curl", focus: "Biceps", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 10–12", setCount: "3", reps: "10–12", rest: "60 sec" },
+  { id: "cable-curl", name: "Cable curl", focus: "Biceps", equipment: "Cable", difficulty: "Beginner", sets: "3 × 12–15", setCount: "3", reps: "12–15", rest: "60 sec" },
+  { id: "rope-pressdown", name: "Rope pressdown", focus: "Triceps", equipment: "Cable", difficulty: "Beginner", sets: "3 × 10–15", setCount: "3", reps: "10–15", rest: "60 sec" },
+  { id: "overhead-triceps-extension", name: "Overhead triceps extension", focus: "Triceps", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 10–12", setCount: "3", reps: "10–12", rest: "60 sec" },
+  { id: "close-grip-bench", name: "Close-grip bench press", focus: "Triceps", equipment: "Barbell", difficulty: "Intermediate", sets: "3 × 6–10", setCount: "3", reps: "6–10", rest: "2 min" },
+  { id: "bench-dip", name: "Bench dip", focus: "Triceps", equipment: "Bodyweight", difficulty: "Beginner", sets: "3 × 8–12", setCount: "3", reps: "8–12", rest: "60 sec" },
+  { id: "back-squat", name: "Back squat", focus: "Quads", equipment: "Barbell", difficulty: "Intermediate", sets: "4 × 6–8", setCount: "4", reps: "6–8", rest: "3 min" },
+  { id: "front-squat", name: "Front squat", focus: "Quads", equipment: "Barbell", difficulty: "Advanced", sets: "3 × 6–8", setCount: "3", reps: "6–8", rest: "3 min" },
+  { id: "goblet-squat", name: "Goblet squat", focus: "Quads", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 10–12", setCount: "3", reps: "10–12", rest: "90 sec" },
+  { id: "leg-press", name: "Leg press", focus: "Quads", equipment: "Machine", difficulty: "Beginner", sets: "4 × 8–12", setCount: "4", reps: "8–12", rest: "2 min" },
+  { id: "walking-lunge", name: "Walking lunge", focus: "Quads", equipment: "Dumbbells", difficulty: "Intermediate", sets: "3 × 10 / side", setCount: "3", reps: "10 / side", rest: "90 sec" },
+  { id: "bulgarian-split-squat", name: "Bulgarian split squat", focus: "Quads", equipment: "Dumbbells", difficulty: "Intermediate", sets: "3 × 8 / side", setCount: "3", reps: "8 / side", rest: "90 sec" },
+  { id: "leg-extension", name: "Leg extension", focus: "Quads", equipment: "Machine", difficulty: "Beginner", sets: "3 × 12–15", setCount: "3", reps: "12–15", rest: "60 sec" },
+  { id: "romanian-deadlift", name: "Romanian deadlift", focus: "Hamstrings", equipment: "Barbell", difficulty: "Intermediate", sets: "3 × 8–10", setCount: "3", reps: "8–10", rest: "2 min" },
+  { id: "dumbbell-rdl", name: "Dumbbell Romanian deadlift", focus: "Hamstrings", equipment: "Dumbbells", difficulty: "Beginner", sets: "3 × 10–12", setCount: "3", reps: "10–12", rest: "90 sec" },
+  { id: "leg-curl", name: "Leg curl", focus: "Hamstrings", equipment: "Machine", difficulty: "Beginner", sets: "3 × 10–15", setCount: "3", reps: "10–15", rest: "60 sec" },
+  { id: "conventional-deadlift", name: "Conventional deadlift", focus: "Hamstrings", equipment: "Barbell", difficulty: "Advanced", sets: "3 × 3–6", setCount: "3", reps: "3–6", rest: "3 min" },
+  { id: "hip-thrust", name: "Hip thrust", focus: "Glutes", equipment: "Barbell", difficulty: "Intermediate", sets: "4 × 8–12", setCount: "4", reps: "8–12", rest: "2 min" },
+  { id: "glute-bridge", name: "Glute bridge", focus: "Glutes", equipment: "Bodyweight", difficulty: "Beginner", sets: "3 × 12–15", setCount: "3", reps: "12–15", rest: "60 sec" },
+  { id: "cable-kickback", name: "Cable kickback", focus: "Glutes", equipment: "Cable", difficulty: "Beginner", sets: "3 × 12 / side", setCount: "3", reps: "12 / side", rest: "60 sec" },
+  { id: "standing-calf-raise", name: "Standing calf raise", focus: "Calves", equipment: "Machine", difficulty: "Beginner", sets: "4 × 12–15", setCount: "4", reps: "12–15", rest: "60 sec" },
+  { id: "seated-calf-raise", name: "Seated calf raise", focus: "Calves", equipment: "Machine", difficulty: "Beginner", sets: "3 × 12–20", setCount: "3", reps: "12–20", rest: "60 sec" },
+  { id: "plank", name: "Plank", focus: "Core", equipment: "Bodyweight", difficulty: "Beginner", sets: "3 × 30–60 sec", setCount: "3", reps: "30–60 sec", rest: "60 sec" },
+  { id: "dead-bug", name: "Dead bug", focus: "Core", equipment: "Bodyweight", difficulty: "Beginner", sets: "3 × 8 / side", setCount: "3", reps: "8 / side", rest: "60 sec" },
+  { id: "hanging-knee-raise", name: "Hanging knee raise", focus: "Core", equipment: "Bodyweight", difficulty: "Intermediate", sets: "3 × 8–12", setCount: "3", reps: "8–12", rest: "60 sec" },
+  { id: "cable-crunch", name: "Cable crunch", focus: "Core", equipment: "Cable", difficulty: "Beginner", sets: "3 × 12–15", setCount: "3", reps: "12–15", rest: "60 sec" },
+  { id: "pallof-press", name: "Pallof press", focus: "Core", equipment: "Cable", difficulty: "Beginner", sets: "3 × 10 / side", setCount: "3", reps: "10 / side", rest: "60 sec" },
+  { id: "kettlebell-swing", name: "Kettlebell swing", focus: "Full body", equipment: "Kettlebell", difficulty: "Intermediate", sets: "4 × 12", setCount: "4", reps: "12", rest: "60 sec" },
+  { id: "farmer-carry", name: "Farmer carry", focus: "Full body", equipment: "Dumbbells", difficulty: "Beginner", sets: "4 × 30 m", setCount: "4", reps: "30 m", rest: "60 sec" },
+  { id: "bike-intervals", name: "Bike intervals", focus: "Cardio", equipment: "Cardio", difficulty: "Beginner", sets: "8 × 30 sec", setCount: "8", reps: "30 sec", rest: "60 sec" },
+  { id: "rowing-intervals", name: "Rowing intervals", focus: "Cardio", equipment: "Cardio", difficulty: "Intermediate", sets: "6 × 1 min", setCount: "6", reps: "1 min", rest: "60 sec" },
+  { id: "burpee", name: "Burpee", focus: "Full body", equipment: "Bodyweight", difficulty: "Intermediate", sets: "3 × 10", setCount: "3", reps: "10", rest: "60 sec" },
+  { id: "band-pull-apart", name: "Band pull-apart", focus: "Shoulders", equipment: "Bands", difficulty: "Beginner", sets: "3 × 15", setCount: "3", reps: "15", rest: "45 sec" },
+  { id: "ninety-ninety", name: "90/90 hip switch", focus: "Mobility", equipment: "Bodyweight", difficulty: "Beginner", sets: "3 × 8 / side", setCount: "3", reps: "8 / side", rest: "30 sec" },
+  { id: "worlds-greatest-stretch", name: "World’s greatest stretch", focus: "Mobility", equipment: "Bodyweight", difficulty: "Beginner", sets: "2 × 6 / side", setCount: "2", reps: "6 / side", rest: "30 sec" },
+  { id: "cat-cow", name: "Cat-cow", focus: "Mobility", equipment: "Bodyweight", difficulty: "Beginner", sets: "2 × 8", setCount: "2", reps: "8", rest: "30 sec" },
+];
+
+const catalogMuscles = ["All", ...Array.from(new Set(exerciseCatalog.map((exercise) => exercise.focus)))];
+const catalogEquipment = ["All", ...Array.from(new Set(exerciseCatalog.map((exercise) => exercise.equipment)))];
 
 const trainingOptions: Array<{
   value: DayAssignment;
@@ -466,6 +533,10 @@ export default function Home() {
   >({});
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [progressExercise, setProgressExercise] = useState("");
+  const [librarySearch, setLibrarySearch] = useState("");
+  const [libraryMuscle, setLibraryMuscle] = useState("All");
+  const [libraryEquipment, setLibraryEquipment] = useState("All");
+  const [libraryDay, setLibraryDay] = useState("MON");
   const [timerLeft, setTimerLeft] = useState(0);
   const [timerLabel, setTimerLabel] = useState("");
   const [profileId, setProfileId] = useState("");
@@ -523,6 +594,28 @@ export default function Home() {
     1,
     ...exerciseProgress.map((point) => point.weight),
   );
+  const activePlanDays = dayLabels.filter(
+    (day) => (weekSchedule[day] ?? "rest") !== "rest",
+  );
+  const libraryTargetDay = activePlanDays.includes(libraryDay)
+    ? libraryDay
+    : activePlanDays[0] ?? "";
+  const filteredCatalog = useMemo(() => {
+    const query = librarySearch.trim().toLowerCase();
+    return exerciseCatalog.filter((exercise) => {
+      const matchesQuery =
+        !query ||
+        exercise.name.toLowerCase().includes(query) ||
+        exercise.focus.toLowerCase().includes(query) ||
+        exercise.equipment.toLowerCase().includes(query);
+      const matchesMuscle =
+        libraryMuscle === "All" || exercise.focus === libraryMuscle;
+      const matchesEquipment =
+        libraryEquipment === "All" ||
+        exercise.equipment === libraryEquipment;
+      return matchesQuery && matchesMuscle && matchesEquipment;
+    });
+  }, [libraryEquipment, libraryMuscle, librarySearch]);
 
   useEffect(() => {
     setToday(
@@ -764,6 +857,47 @@ export default function Home() {
     }));
   }
 
+  function addLibraryExercise(exercise: LibraryExercise) {
+    if (!libraryTargetDay) {
+      setNotice("Choose a training day in My Plan first.");
+      window.setTimeout(() => setNotice(""), 2600);
+      return;
+    }
+
+    const currentDayExercises = dayExercises[libraryTargetDay] ?? [];
+    if (
+      currentDayExercises.some(
+        (item) => item.name.toLowerCase() === exercise.name.toLowerCase(),
+      )
+    ) {
+      setNotice(`${exercise.name} is already in ${libraryTargetDay}.`);
+      window.setTimeout(() => setNotice(""), 2600);
+      return;
+    }
+
+    const plannedExercise: Exercise = {
+      name: exercise.name,
+      focus: exercise.focus,
+      sets: exercise.sets,
+      setCount: exercise.setCount,
+      reps: exercise.reps,
+      rest: exercise.rest,
+    };
+    const nextDayExercises = {
+      ...dayExercises,
+      [libraryTargetDay]: [
+        ...currentDayExercises,
+        hydrateExercise(plannedExercise),
+      ],
+    };
+    setDayExercises(nextDayExercises);
+    setExpandedDay(libraryTargetDay);
+    persistManualPlan(nextDayExercises, {
+      resetWorkout: false,
+      successMessage: `${exercise.name} added to ${libraryTargetDay}`,
+    });
+  }
+
   function removeDayExercise(day: string, index: number) {
     setDayExercises((current) => ({
       ...current,
@@ -870,6 +1004,7 @@ export default function Home() {
   const navItems: Array<{ id: View; label: string; icon: string }> = [
     { id: "dashboard", label: "Dashboard", icon: "⌂" },
     { id: "plan", label: "My plan", icon: "▦" },
+    { id: "library", label: "Exercises", icon: "≡" },
     { id: "workout", label: "Log workout", icon: "+" },
     { id: "progress", label: "Progress", icon: "◔" },
   ];
@@ -1482,6 +1617,171 @@ export default function Home() {
                 </section>
               </aside>
             </div>
+          </div>
+        )}
+
+        {view === "library" && (
+          <div className="appPage libraryPage">
+            <div className="pageTitle">
+              <div>
+                <p className="eyebrow">EXERCISE LIBRARY</p>
+                <h1>Find your next movement</h1>
+                <span>
+                  Search common exercises, filter by muscle or equipment, then
+                  add one directly to a training day.
+                </span>
+              </div>
+              <button
+                className="secondaryAction"
+                onClick={() => setView("plan")}
+                type="button"
+              >
+                Open My Plan
+              </button>
+            </div>
+
+            <section className="libraryToolbar">
+              <label className="librarySearch">
+                <span className="srOnly">Search exercises</span>
+                <span aria-hidden="true">⌕</span>
+                <input
+                  onChange={(event) => setLibrarySearch(event.target.value)}
+                  placeholder="Search exercise, muscle or equipment"
+                  type="search"
+                  value={librarySearch}
+                />
+              </label>
+              <label>
+                <span>Muscle</span>
+                <select
+                  onChange={(event) => setLibraryMuscle(event.target.value)}
+                  value={libraryMuscle}
+                >
+                  {catalogMuscles.map((muscle) => (
+                    <option key={muscle}>{muscle}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Equipment</span>
+                <select
+                  onChange={(event) => setLibraryEquipment(event.target.value)}
+                  value={libraryEquipment}
+                >
+                  {catalogEquipment.map((equipment) => (
+                    <option key={equipment}>{equipment}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="libraryDaySelect">
+                <span>Add to training day</span>
+                <select
+                  disabled={!activePlanDays.length}
+                  onChange={(event) => setLibraryDay(event.target.value)}
+                  value={libraryTargetDay}
+                >
+                  {!activePlanDays.length && (
+                    <option value="">No training days</option>
+                  )}
+                  {activePlanDays.map((day) => (
+                    <option key={day}>{day}</option>
+                  ))}
+                </select>
+              </label>
+            </section>
+
+            {!activePlanDays.length && (
+              <section className="libraryPlanPrompt">
+                <span aria-hidden="true">▦</span>
+                <div>
+                  <strong>Create a training day first</strong>
+                  <p>
+                    Set at least one day to Push, Pull, Legs or another workout
+                    type before adding exercises.
+                  </p>
+                </div>
+                <button onClick={() => setView("plan")} type="button">
+                  Go to My Plan
+                </button>
+              </section>
+            )}
+
+            <div className="libraryResultsHeader">
+              <div>
+                <p className="eyebrow">BROWSE MOVEMENTS</p>
+                <h2>
+                  {filteredCatalog.length}{" "}
+                  {filteredCatalog.length === 1 ? "exercise" : "exercises"}
+                </h2>
+              </div>
+              <span>
+                {libraryTargetDay
+                  ? `Adding to ${libraryTargetDay}`
+                  : "Choose a training day"}
+              </span>
+            </div>
+
+            {filteredCatalog.length ? (
+              <section className="exerciseLibraryGrid">
+                {filteredCatalog.map((exercise) => {
+                  const alreadyAdded =
+                    Boolean(libraryTargetDay) &&
+                    (dayExercises[libraryTargetDay] ?? []).some(
+                      (item) =>
+                        item.name.toLowerCase() === exercise.name.toLowerCase(),
+                    );
+                  return (
+                    <article className="libraryExerciseCard" key={exercise.id}>
+                      <div className="libraryExerciseVisual">
+                        <span>{exercise.focus.slice(0, 2).toUpperCase()}</span>
+                        <small>{exercise.equipment}</small>
+                      </div>
+                      <div className="libraryExerciseBody">
+                        <div className="libraryExerciseTags">
+                          <span>{exercise.focus}</span>
+                          <span>{exercise.difficulty}</span>
+                        </div>
+                        <h3>{exercise.name}</h3>
+                        <p>
+                          <strong>{exercisePrescription(exercise)}</strong>
+                          <span>·</span>
+                          {exercise.rest} rest
+                        </p>
+                        <button
+                          disabled={
+                            !libraryTargetDay || saving || alreadyAdded
+                          }
+                          onClick={() => addLibraryExercise(exercise)}
+                          type="button"
+                        >
+                          {alreadyAdded
+                            ? `Added to ${libraryTargetDay}`
+                            : libraryTargetDay
+                              ? `Add to ${libraryTargetDay}`
+                              : "Choose a training day"}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </section>
+            ) : (
+              <section className="libraryEmpty">
+                <span aria-hidden="true">⌕</span>
+                <h2>No exercises found</h2>
+                <p>Try another search or reset one of the filters.</p>
+                <button
+                  onClick={() => {
+                    setLibrarySearch("");
+                    setLibraryMuscle("All");
+                    setLibraryEquipment("All");
+                  }}
+                  type="button"
+                >
+                  Clear filters
+                </button>
+              </section>
+            )}
           </div>
         )}
 
