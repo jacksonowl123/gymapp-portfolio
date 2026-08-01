@@ -1136,7 +1136,7 @@ input:focus-visible {
   align-items: center;
   display: grid;
   gap: 8px;
-  grid-template-columns: 28px minmax(160px, 1fr) 58px 82px 92px 96px;
+  grid-template-columns: 28px minmax(150px, 1fr) 52px 68px 68px 84px 96px;
 }
 
 .exerciseEditorHead {
@@ -1710,7 +1710,7 @@ input:focus-visible {
   align-items: center;
   display: grid;
   gap: 10px;
-  grid-template-columns: 40px minmax(90px, 1fr) 90px 90px 45px;
+  grid-template-columns: 40px minmax(90px, 1fr) 90px 45px;
 }
 
 .setLoggerHead {
@@ -2958,12 +2958,13 @@ button.previousSet:hover {
   }
 
   .exerciseEditor {
-    padding-left: 75px;
+    padding-left: 16px;
   }
 
   .exerciseEditorHead,
   .exerciseEditRow {
-    grid-template-columns: 28px minmax(130px, 1fr) 52px 70px 82px 92px;
+    gap: 6px;
+    grid-template-columns: 24px minmax(95px, 1fr) 44px 56px 56px 72px 76px;
   }
 
   .planRows button {
@@ -2995,7 +2996,7 @@ button.previousSet:hover {
 
   .setLoggerHead,
   .setLoggerRow {
-    grid-template-columns: 36px minmax(72px, 1fr) 72px 72px 36px;
+    grid-template-columns: 36px minmax(72px, 1fr) 72px 36px;
   }
 
   .liftProgressBody {
@@ -3253,6 +3254,11 @@ button.previousSet:hover {
     grid-row: 2;
   }
 
+  .exerciseEditRow > label:nth-of-type(4) {
+    grid-column: 4;
+    grid-row: 2;
+  }
+
   .restField {
     grid-column: 2 / -1;
     grid-row: 3;
@@ -3288,7 +3294,7 @@ button.previousSet:hover {
   .setLoggerHead,
   .setLoggerRow {
     gap: 6px;
-    grid-template-columns: 30px 58px minmax(55px, 1fr) minmax(55px, 1fr) 30px;
+    grid-template-columns: 30px 58px minmax(55px, 1fr) 30px;
   }
 
   .setLoggerHead {

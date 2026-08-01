@@ -29,6 +29,7 @@ type Exercise = {
   focus: string;
   setCount?: string;
   reps?: string;
+  weight?: string;
   rest?: string;
 };
 
@@ -73,7 +74,7 @@ type WorkoutLog = {
 type WorkoutDraft = {
   workoutDay: string;
   workoutTitle: string;
-  entries: Record<string, { weight: string; reps: string }>;
+  entries: Record<string, { reps: string }>;
   completed: Record<string, boolean>;
   elapsedSeconds: number;
   paused: boolean;
@@ -277,6 +278,7 @@ function hydrateExercise(exercise: Exercise): Exercise {
     ...exercise,
     setCount: exercise.setCount ?? (setPart.trim() || "3"),
     reps: exercise.reps ?? (repParts.join("×").trim() || "10"),
+    weight: exercise.weight ?? "",
     rest: exercise.rest ?? "90 sec",
   };
 }
@@ -289,6 +291,15 @@ function exercisePrescription(exercise: Exercise) {
 function plannedSetCount(exercise: Exercise) {
   const count = Number.parseInt(hydrateExercise(exercise).setCount ?? "1", 10);
   return Number.isFinite(count) ? Math.min(20, Math.max(1, count)) : 1;
+}
+
+function plannedWeight(exercise: Exercise) {
+  const value = hydrateExercise(exercise).weight?.trim();
+  if (!value) return null;
+  const weight = Number(value);
+  return Number.isFinite(weight) && weight >= 0 && weight <= 2000
+    ? weight
+    : null;
 }
 
 function restToSeconds(rest = "90 sec") {
@@ -510,7 +521,7 @@ export default function Home() {
   );
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
   const [entries, setEntries] = useState<
-    Record<string, { weight: string; reps: string }>
+    Record<string, { reps: string }>
   >({});
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
   const [progressExercise, setProgressExercise] = useState("");
@@ -562,13 +573,18 @@ export default function Home() {
     return count + (exerciseDone ? 1 : 0);
   }, 0);
   const currentWorkoutVolume = Math.round(
-    Object.entries(entries).reduce((sum, [key, entry]) => {
-      if (!completed[key]) return sum;
-      const weight = Number(entry.weight);
-      const reps = Number(entry.reps);
-      return Number.isFinite(weight) && Number.isFinite(reps)
-        ? sum + weight * reps
-        : sum;
+    workout.exercises.reduce((sum, exercise, exerciseIndex) => {
+      const weight = plannedWeight(exercise);
+      if (weight === null) return sum;
+      const baseKey = `${workout.day}-${workout.title}-${exerciseIndex}`;
+      return sum + Array.from(
+        { length: plannedSetCount(exercise) },
+        (_, setIndex) => {
+          const key = `${baseKey}-${setIndex + 1}`;
+          const reps = Number(entries[key]?.reps);
+          return completed[key] && Number.isFinite(reps) ? weight * reps : 0;
+        },
+      ).reduce((setTotal, volume) => setTotal + volume, 0);
     }, 0),
   );
   const currentDurationMinutes = Math.max(1, Math.ceil(sessionElapsed / 60));
@@ -888,7 +904,7 @@ export default function Home() {
       completedSets > 0 ||
       workoutNote.trim().length > 0 ||
       Object.values(entries).some(
-        (entry) => entry.weight.trim() || entry.reps.trim(),
+        (entry) => entry.reps.trim(),
       );
     if (hasDraft) {
       setPendingWorkoutSwitch(index);
@@ -951,18 +967,17 @@ export default function Home() {
     window.localStorage.setItem("liftly-rest-alerts", JSON.stringify(next));
   }
 
-  function copyPreviousSet(
+  function copyPreviousReps(
     key: string,
     previousSet: { weight: number; reps: number },
   ) {
     setEntries((current) => ({
       ...current,
       [key]: {
-        weight: String(previousSet.weight),
         reps: String(previousSet.reps),
       },
     }));
-    setNotice("Previous weight and reps copied");
+    setNotice("Previous reps copied");
     window.setTimeout(() => setNotice(""), 1800);
   }
 
@@ -1071,7 +1086,7 @@ export default function Home() {
   function updateDayExercise(
     day: string,
     index: number,
-    field: "name" | "setCount" | "reps" | "rest",
+    field: "name" | "setCount" | "reps" | "weight" | "rest",
     value: string,
   ) {
     setDayExercises((current) => ({
@@ -1098,6 +1113,7 @@ export default function Home() {
           sets: "3 × 10",
           setCount: "3",
           reps: "10",
+          weight: "",
           rest: "90 sec",
         },
       ],
@@ -1128,6 +1144,7 @@ export default function Home() {
       sets: exercise.sets,
       setCount: exercise.setCount,
       reps: exercise.reps,
+      weight: exercise.weight ?? "",
       rest: exercise.rest,
     };
     const nextDayExercises = {
@@ -1194,9 +1211,14 @@ export default function Home() {
             const setNumber = setIndex + 1;
             const key = `${baseKey}-${setNumber}`;
             const entry = entries[key];
-            const weight = Number(entry?.weight);
+            const weight = plannedWeight(exercise);
             const reps = Number(entry?.reps);
-            if (!completed[key] || weight <= 0 || reps <= 0) return [];
+            if (
+              !completed[key] ||
+              weight === null ||
+              !Number.isInteger(reps) ||
+              reps <= 0
+            ) return [];
             return [{
               exerciseName: exercise.name,
               setNumber,
@@ -1208,7 +1230,7 @@ export default function Home() {
       },
     );
     if (completedSetPayload.length !== completedSets) {
-      setNotice("Add weight and reps before marking a set complete.");
+      setNotice("Set KG in My Plan and enter reps for every completed set.");
       window.setTimeout(() => setNotice(""), 2800);
       return;
     }
@@ -1661,6 +1683,7 @@ export default function Home() {
                               <span>EXERCISE</span>
                               <span>SETS</span>
                               <span>REPS</span>
+                              <span>KG</span>
                               <span>REST</span>
                               <span>ORDER</span>
                             </div>
@@ -1764,6 +1787,27 @@ export default function Home() {
                                         )
                                       }
                                       value={hydrated.reps}
+                                    />
+                                  </label>
+                                  <label className="weightField">
+                                    <span className="fieldCaption">KG</span>
+                                    <input
+                                      aria-label={`Planned weight in kilograms for ${hydrated.name || `exercise ${exerciseIndex + 1}`}`}
+                                      inputMode="decimal"
+                                      max="2000"
+                                      min="0"
+                                      onChange={(event) =>
+                                        updateDayExercise(
+                                          day,
+                                          exerciseIndex,
+                                          "weight",
+                                          event.target.value,
+                                        )
+                                      }
+                                      placeholder="kg"
+                                      step="0.5"
+                                      type="number"
+                                      value={hydrated.weight}
                                     />
                                   </label>
                                   <label className="restField">
@@ -2129,6 +2173,7 @@ export default function Home() {
                 {workout.exercises.map((exercise, index) => {
                   const baseKey = `${workout.day}-${workout.title}-${index}`;
                   const previous = previousPerformance(exercise.name);
+                  const targetWeight = plannedWeight(exercise);
                   const exerciseDone = Array.from(
                     { length: plannedSetCount(exercise) },
                     (_, setIndex) =>
@@ -2146,7 +2191,13 @@ export default function Home() {
                         <span className="loggerExercise">
                           <strong>{exercise.name}</strong>
                           <small>
-                            Target {exercisePrescription(exercise)} · {exercise.rest ?? "90 sec"} rest
+                            Target {exercisePrescription(exercise)} ·{" "}
+                            {targetWeight === null
+                              ? "KG not set — update My Plan"
+                              : targetWeight === 0
+                                ? "Bodyweight"
+                                : `${targetWeight} kg`} ·{" "}
+                            {exercise.rest ?? "90 sec"} rest
                           </small>
                           <span className="previousPerformance">
                             {previous.length
@@ -2161,7 +2212,6 @@ export default function Home() {
                       <div className="setLoggerHead">
                         <span>SET</span>
                         <span>PREVIOUS</span>
-                        <span>KG</span>
                         <span>REPS</span>
                         <span>DONE</span>
                       </div>
@@ -2173,7 +2223,6 @@ export default function Home() {
                             const key = `${baseKey}-${setNumber}`;
                             const isDone = Boolean(completed[key]);
                             const entry = entries[key] ?? {
-                              weight: "",
                               reps: "",
                             };
                             const previousSet = previous[setIndex];
@@ -2185,12 +2234,12 @@ export default function Home() {
                                 <span className="setNumber">{setNumber}</span>
                                 {previousSet ? (
                                   <button
-                                    aria-label={`Copy previous set: ${previousSet.weight} kilograms for ${previousSet.reps} reps`}
+                                    aria-label={`Copy ${previousSet.reps} reps from the previous set`}
                                     className="previousSet"
                                     onClick={() =>
-                                      copyPreviousSet(key, previousSet)
+                                      copyPreviousReps(key, previousSet)
                                     }
-                                    title="Use these values"
+                                    title="Use previous reps"
                                     type="button"
                                   >
                                     {previousSet.weight} × {previousSet.reps}
@@ -2198,25 +2247,6 @@ export default function Home() {
                                 ) : (
                                   <span className="previousSet">—</span>
                                 )}
-                                <label>
-                                  <span className="srOnly">
-                                    Weight for {exercise.name}, set {setNumber}
-                                  </span>
-                                  <input
-                                    inputMode="decimal"
-                                    onChange={(event) =>
-                                      setEntries((current) => ({
-                                        ...current,
-                                        [key]: {
-                                          ...entry,
-                                          weight: event.target.value,
-                                        },
-                                      }))
-                                    }
-                                    placeholder={previousSet ? String(previousSet.weight) : "kg"}
-                                    value={entry.weight}
-                                  />
-                                </label>
                                 <label>
                                   <span className="srOnly">
                                     Reps for {exercise.name}, set {setNumber}
@@ -2241,6 +2271,11 @@ export default function Home() {
                                     checked={isDone}
                                     onChange={(event) => {
                                       const checked = event.target.checked;
+                                      if (checked && targetWeight === null) {
+                                        setNotice(`Set KG for ${exercise.name} in My Plan first.`);
+                                        window.setTimeout(() => setNotice(""), 2800);
+                                        return;
+                                      }
                                       setCompleted((current) => ({
                                         ...current,
                                         [key]: checked,
@@ -2568,8 +2603,8 @@ export default function Home() {
             <p className="eyebrow">WORKOUT FOUND</p>
             <h2 id="resume-workout-title">Resume your unfinished workout?</h2>
             <p>
-              <strong>{savedDraft.workoutTitle}</strong> has saved weights,
-              reps and completed sets from your previous visit.
+              <strong>{savedDraft.workoutTitle}</strong> has saved reps and
+              completed sets from your previous visit.
             </p>
             <div>
               <button
@@ -2652,7 +2687,7 @@ export default function Home() {
             <p className="eyebrow">RESET SESSION</p>
             <h2 id="reset-workout-title">Clear this workout?</h2>
             <p>
-              All entered weights, reps, completed sets, notes and elapsed time
+              All entered reps, completed sets, notes and elapsed time
               will be cleared.
             </p>
             <div>
@@ -2730,7 +2765,7 @@ export default function Home() {
             <p className="eyebrow">CHANGE WORKOUT</p>
             <h2 id="switch-workout-title">Switch to another session?</h2>
             <p>
-              Your unsaved weights, reps and completed sets in{" "}
+              Your unsaved reps and completed sets in{" "}
               <strong>{workout.title}</strong> will be cleared.
             </p>
             <div>

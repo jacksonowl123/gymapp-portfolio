@@ -219,7 +219,7 @@ export async function POST(request: Request) {
               setNumber < 1 ||
               setNumber > 20 ||
               !Number.isFinite(weight) ||
-              weight <= 0 ||
+              weight < 0 ||
               weight > 2000 ||
               !Number.isInteger(reps) ||
               reps < 1 ||
