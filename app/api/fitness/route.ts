@@ -34,6 +34,7 @@ async function ensureSchema(db: D1Database) {
         duration INTEGER NOT NULL,
         exercises_completed INTEGER NOT NULL,
         total_exercises INTEGER NOT NULL,
+        note TEXT NOT NULL DEFAULT '',
         performed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `),
@@ -57,6 +58,18 @@ async function ensureSchema(db: D1Database) {
       ON workout_sets (log_id)
     `),
   ]);
+
+  const workoutLogColumns = await db
+    .prepare("PRAGMA table_info(workout_logs)")
+    .all();
+  const hasNoteColumn = (
+    workoutLogColumns.results as Array<Record<string, unknown>>
+  ).some((column) => column.name === "note");
+  if (!hasNoteColumn) {
+    await db
+      .prepare("ALTER TABLE workout_logs ADD COLUMN note TEXT NOT NULL DEFAULT ''")
+      .run();
+  }
 }
 
 function validProfileId(value: unknown): value is string {
@@ -89,6 +102,7 @@ export async function GET(request: Request) {
           id, workout_name AS workoutName, duration,
           exercises_completed AS exercisesCompleted,
           total_exercises AS totalExercises,
+          note,
           performed_at AS performedAt
         FROM workout_logs
         WHERE profile_id = ?
@@ -191,6 +205,7 @@ export async function POST(request: Request) {
       const duration = Number(payload.duration);
       const exercisesCompleted = Number(payload.exercisesCompleted);
       const totalExercises = Number(payload.totalExercises);
+      const note = safeText(payload.note, 500);
       const sets = Array.isArray(payload.sets)
         ? payload.sets.slice(0, 50).flatMap((value) => {
             const set = value as Record<string, unknown>;
@@ -232,12 +247,13 @@ export async function POST(request: Request) {
 
       const result = await db.prepare(`
         INSERT INTO workout_logs
-          (profile_id, workout_name, duration, exercises_completed, total_exercises)
-        VALUES (?, ?, ?, ?, ?)
+          (profile_id, workout_name, duration, exercises_completed, total_exercises, note)
+        VALUES (?, ?, ?, ?, ?, ?)
         RETURNING
           id, workout_name AS workoutName, duration,
           exercises_completed AS exercisesCompleted,
           total_exercises AS totalExercises,
+          note,
           performed_at AS performedAt
       `).bind(
         payload.profileId,
@@ -245,6 +261,7 @@ export async function POST(request: Request) {
         duration,
         exercisesCompleted,
         totalExercises,
+        note,
       ).first();
 
       if (!result) {

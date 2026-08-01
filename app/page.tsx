@@ -61,12 +61,41 @@ type WorkoutLog = {
   exercisesCompleted: number;
   totalExercises: number;
   performedAt: string;
+  note?: string;
   sets?: Array<{
     exerciseName: string;
     setNumber?: number;
     weight: number;
     reps: number;
   }>;
+};
+
+type WorkoutDraft = {
+  workoutDay: string;
+  workoutTitle: string;
+  entries: Record<string, { weight: string; reps: string }>;
+  completed: Record<string, boolean>;
+  elapsedSeconds: number;
+  paused: boolean;
+  note: string;
+  timerEndsAt: number | null;
+  timerLabel: string;
+  savedAt: number;
+};
+
+type CompletedWorkoutSummary = {
+  workoutName: string;
+  duration: number;
+  completedSets: number;
+  volume: number;
+  personalRecords: string[];
+  note: string;
+};
+
+type RestAlerts = {
+  sound: boolean;
+  vibration: boolean;
+  notification: boolean;
 };
 
 const dayLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -271,6 +300,15 @@ function restToSeconds(rest = "90 sec") {
 function formatTimer(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function formatSessionTime(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainingSeconds = seconds % 60;
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
+    : `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
 function exercisesFromWorkouts(workouts: Workout[]) {
@@ -538,9 +576,30 @@ export default function Home() {
   const [libraryEquipment, setLibraryEquipment] = useState("All");
   const [libraryDay, setLibraryDay] = useState("MON");
   const [timerLeft, setTimerLeft] = useState(0);
+  const [timerEndsAt, setTimerEndsAt] = useState<number | null>(null);
   const [timerLabel, setTimerLabel] = useState("");
+  const [sessionElapsed, setSessionElapsed] = useState(0);
+  const [sessionStarted, setSessionStarted] = useState(false);
+  const [sessionPaused, setSessionPaused] = useState(false);
+  const [workoutNote, setWorkoutNote] = useState("");
+  const [savedDraft, setSavedDraft] = useState<WorkoutDraft | null>(null);
+  const [finishReview, setFinishReview] = useState(false);
+  const [pendingReset, setPendingReset] = useState(false);
+  const [completedWorkoutSummary, setCompletedWorkoutSummary] =
+    useState<CompletedWorkoutSummary | null>(null);
+  const [restAlerts, setRestAlerts] = useState<RestAlerts>({
+    sound: true,
+    vibration: true,
+    notification: false,
+  });
   const [profileId, setProfileId] = useState("");
-  const [today, setToday] = useState("Today");
+  const [today] = useState(() =>
+    new Date().toLocaleDateString("en", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }),
+  );
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -559,6 +618,17 @@ export default function Home() {
     ).some(Boolean);
     return count + (exerciseDone ? 1 : 0);
   }, 0);
+  const currentWorkoutVolume = Math.round(
+    Object.entries(entries).reduce((sum, [key, entry]) => {
+      if (!completed[key]) return sum;
+      const weight = Number(entry.weight);
+      const reps = Number(entry.reps);
+      return Number.isFinite(weight) && Number.isFinite(reps)
+        ? sum + weight * reps
+        : sum;
+    }, 0),
+  );
+  const currentDurationMinutes = Math.max(1, Math.ceil(sessionElapsed / 60));
   const weeklyTarget = recommendation.workouts.length;
   const weeklyDone = Math.min(logs.length, weeklyTarget);
   const weeklyPercent = Math.round((weeklyDone / weeklyTarget) * 100);
@@ -618,59 +688,174 @@ export default function Home() {
   }, [libraryEquipment, libraryMuscle, librarySearch]);
 
   useEffect(() => {
-    setToday(
-      new Date().toLocaleDateString("en", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      }),
-    );
+    const initialization = window.setTimeout(() => {
+      const existing = window.localStorage.getItem("liftly-profile-id");
+      const id = existing ?? crypto.randomUUID();
+      window.localStorage.setItem("liftly-profile-id", id);
+      setProfileId(id);
+      let draftToRestore: WorkoutDraft | null = null;
 
-    const existing = window.localStorage.getItem("liftly-profile-id");
-    const id = existing ?? crypto.randomUUID();
-    window.localStorage.setItem("liftly-profile-id", id);
-    setProfileId(id);
-
-    fetch(`/api/fitness?profileId=${encodeURIComponent(id)}`)
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Could not load");
-        return response.json();
-      })
-      .then((data) => {
-        if (data.profile?.planJson) {
-          const savedProfile: Profile = {
-            goal: data.profile.goal,
-            experience: data.profile.experience,
-            days: data.profile.days,
-            equipment: data.profile.equipment,
-          };
-          setProfile(savedProfile);
-          const savedPlan = JSON.parse(data.profile.planJson) as Recommendation;
-          setRecommendation(savedPlan);
-          setWeekSchedule(scheduleFromWorkouts(savedPlan.workouts));
-          setDayExercises(exercisesFromWorkouts(savedPlan.workouts));
+      try {
+        const storedDraft = window.localStorage.getItem(
+          `liftly-workout-draft-${id}`,
+        );
+        if (storedDraft) {
+          draftToRestore = JSON.parse(storedDraft) as WorkoutDraft;
         }
-        if (Array.isArray(data.logs)) setLogs(data.logs);
-      })
-      .catch(() => setNotice("Working offline — changes may not be saved."));
+        const storedAlerts = window.localStorage.getItem("liftly-rest-alerts");
+        if (storedAlerts) {
+          setRestAlerts((current) => ({
+            ...current,
+            ...(JSON.parse(storedAlerts) as Partial<RestAlerts>),
+          }));
+        }
+      } catch {
+        window.localStorage.removeItem(`liftly-workout-draft-${id}`);
+      }
+
+      fetch(`/api/fitness?profileId=${encodeURIComponent(id)}`)
+        .then(async (response) => {
+          if (!response.ok) throw new Error("Could not load");
+          return response.json();
+        })
+        .then((data) => {
+          if (data.profile?.planJson) {
+            const savedProfile: Profile = {
+              goal: data.profile.goal,
+              experience: data.profile.experience,
+              days: data.profile.days,
+              equipment: data.profile.equipment,
+            };
+            setProfile(savedProfile);
+            const savedPlan = JSON.parse(data.profile.planJson) as Recommendation;
+            setRecommendation(savedPlan);
+            setWeekSchedule(scheduleFromWorkouts(savedPlan.workouts));
+            setDayExercises(exercisesFromWorkouts(savedPlan.workouts));
+          }
+          if (Array.isArray(data.logs)) setLogs(data.logs);
+          if (draftToRestore) setSavedDraft(draftToRestore);
+        })
+        .catch(() => {
+          if (draftToRestore) setSavedDraft(draftToRestore);
+          setNotice("Working offline — changes may not be saved.");
+        });
+    }, 0);
+    return () => window.clearTimeout(initialization);
   }, []);
 
   useEffect(() => {
-    if (timerLeft <= 0) return;
-    const timeout = window.setTimeout(
-      () => setTimerLeft((current) => Math.max(0, current - 1)),
-      1000,
-    );
-    return () => window.clearTimeout(timeout);
-  }, [timerLeft]);
+    if (!sessionStarted || sessionPaused || view !== "workout") return;
+    let lastTick = Date.now();
+    const interval = window.setInterval(() => {
+      const now = Date.now();
+      const secondsPassed = Math.max(1, Math.round((now - lastTick) / 1000));
+      lastTick = now;
+      setSessionElapsed((current) => current + secondsPassed);
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [sessionPaused, sessionStarted, view]);
+
+  useEffect(() => {
+    if (!timerEndsAt) return;
+    const updateTimer = () => {
+      const remaining = Math.max(
+        0,
+        Math.ceil((timerEndsAt - Date.now()) / 1000),
+      );
+      setTimerLeft(remaining);
+      if (remaining === 0) setTimerEndsAt(null);
+    };
+    updateTimer();
+    const interval = window.setInterval(updateTimer, 500);
+    return () => window.clearInterval(interval);
+  }, [timerEndsAt]);
 
   useEffect(() => {
     if (timerLeft !== 0 || !timerLabel) return;
-    setNotice(`Rest complete — ready for your next ${timerLabel} set.`);
-    setTimerLabel("");
-    const timeout = window.setTimeout(() => setNotice(""), 2800);
-    return () => window.clearTimeout(timeout);
-  }, [timerLeft, timerLabel]);
+    let noticeTimeout: number | undefined;
+    const alertTimeout = window.setTimeout(() => {
+      setNotice(`Rest complete — ready for your next ${timerLabel} set.`);
+      if (restAlerts.sound) {
+        try {
+          const AudioContextClass =
+            window.AudioContext ??
+            (window as typeof window & {
+              webkitAudioContext?: typeof AudioContext;
+            }).webkitAudioContext;
+          if (AudioContextClass) {
+            const context = new AudioContextClass();
+            const oscillator = context.createOscillator();
+            const gain = context.createGain();
+            oscillator.frequency.value = 740;
+            gain.gain.setValueAtTime(0.08, context.currentTime);
+            gain.gain.exponentialRampToValueAtTime(
+              0.001,
+              context.currentTime + 0.45,
+            );
+            oscillator.connect(gain);
+            gain.connect(context.destination);
+            oscillator.start();
+            oscillator.stop(context.currentTime + 0.45);
+          }
+        } catch {
+          // The visual timer still completes if audio is unavailable.
+        }
+      }
+      if (restAlerts.vibration && "vibrate" in navigator) {
+        navigator.vibrate([180, 80, 180]);
+      }
+      if (
+        restAlerts.notification &&
+        "Notification" in window &&
+        Notification.permission === "granted" &&
+        document.hidden
+      ) {
+        new Notification("Liftly rest complete", {
+          body: `Ready for your next ${timerLabel} set.`,
+          icon: "/liftly-icon.png",
+        });
+      }
+      setTimerLabel("");
+      noticeTimeout = window.setTimeout(() => setNotice(""), 2800);
+    }, 0);
+    return () => {
+      window.clearTimeout(alertTimeout);
+      if (noticeTimeout) window.clearTimeout(noticeTimeout);
+    };
+  }, [restAlerts, timerLeft, timerLabel]);
+
+  useEffect(() => {
+    if (!profileId || !sessionStarted || view !== "workout") return;
+    const draft: WorkoutDraft = {
+      workoutDay: workout.day,
+      workoutTitle: workout.title,
+      entries,
+      completed,
+      elapsedSeconds: sessionElapsed,
+      paused: sessionPaused,
+      note: workoutNote,
+      timerEndsAt,
+      timerLabel,
+      savedAt: Date.now(),
+    };
+    window.localStorage.setItem(
+      `liftly-workout-draft-${profileId}`,
+      JSON.stringify(draft),
+    );
+  }, [
+    completed,
+    entries,
+    profileId,
+    sessionElapsed,
+    sessionPaused,
+    sessionStarted,
+    timerEndsAt,
+    timerLabel,
+    view,
+    workout.day,
+    workout.title,
+    workoutNote,
+  ]);
 
   const activityBars = useMemo(() => {
     const source = logs.slice(0, 7).reverse();
@@ -684,19 +869,81 @@ export default function Home() {
     });
   }, [logs]);
 
+  function clearStoredWorkoutDraft() {
+    if (profileId) {
+      window.localStorage.removeItem(`liftly-workout-draft-${profileId}`);
+    }
+    setSavedDraft(null);
+  }
+
   function openWorkout(index = selectedWorkout) {
+    if (sessionStarted && index === selectedWorkout) {
+      setView("workout");
+      return;
+    }
+    clearStoredWorkoutDraft();
     setSelectedWorkout(index);
     setCompleted({});
     setEntries({});
     setTimerLeft(0);
+    setTimerEndsAt(null);
     setTimerLabel("");
+    setSessionElapsed(0);
+    setSessionPaused(false);
+    setSessionStarted(true);
+    setWorkoutNote("");
+    setFinishReview(false);
     setView("workout");
+  }
+
+  function resumeSavedWorkout() {
+    if (!savedDraft) return;
+    const workoutIndex = recommendation.workouts.findIndex(
+      (item) =>
+        item.day === savedDraft.workoutDay &&
+        item.title === savedDraft.workoutTitle,
+    );
+    if (workoutIndex < 0) {
+      clearStoredWorkoutDraft();
+      setNotice("That saved workout is no longer in your plan.");
+      window.setTimeout(() => setNotice(""), 2800);
+      return;
+    }
+    const extraElapsed = savedDraft.paused
+      ? 0
+      : Math.max(0, Math.round((Date.now() - savedDraft.savedAt) / 1000));
+    setSelectedWorkout(workoutIndex);
+    setEntries(savedDraft.entries);
+    setCompleted(savedDraft.completed);
+    setSessionElapsed(savedDraft.elapsedSeconds + extraElapsed);
+    setSessionPaused(savedDraft.paused);
+    setSessionStarted(true);
+    setWorkoutNote(savedDraft.note);
+    setTimerEndsAt(savedDraft.timerEndsAt);
+    setTimerLeft(
+      savedDraft.timerEndsAt
+        ? Math.max(0, Math.ceil((savedDraft.timerEndsAt - Date.now()) / 1000))
+        : 0,
+    );
+    setTimerLabel(savedDraft.timerEndsAt ? savedDraft.timerLabel : "");
+    setSavedDraft(null);
+    setView("workout");
+    setNotice("Workout restored");
+    window.setTimeout(() => setNotice(""), 2200);
+  }
+
+  function discardSavedWorkout() {
+    clearStoredWorkoutDraft();
+    setNotice("Workout draft discarded");
+    window.setTimeout(() => setNotice(""), 2200);
   }
 
   function selectWorkout(index: number) {
     if (index === selectedWorkout) return;
     const hasDraft =
+      sessionElapsed > 0 ||
       completedSets > 0 ||
+      workoutNote.trim().length > 0 ||
       Object.values(entries).some(
         (entry) => entry.weight.trim() || entry.reps.trim(),
       );
@@ -709,6 +956,7 @@ export default function Home() {
 
   function confirmWorkoutSwitch() {
     if (pendingWorkoutSwitch === null) return;
+    setSessionStarted(false);
     openWorkout(pendingWorkoutSwitch);
     setPendingWorkoutSwitch(null);
   }
@@ -727,8 +975,64 @@ export default function Home() {
   }
 
   function startRestTimer(exercise: Exercise) {
-    setTimerLeft(restToSeconds(exercise.rest));
+    const seconds = restToSeconds(exercise.rest);
+    setTimerLeft(seconds);
+    setTimerEndsAt(() => Date.now() + seconds * 1000);
     setTimerLabel(exercise.name);
+  }
+
+  function adjustRestTimer(seconds: number) {
+    const nextSeconds = Math.max(0, timerLeft + seconds);
+    setTimerLeft(nextSeconds);
+    setTimerEndsAt(nextSeconds > 0 ? Date.now() + nextSeconds * 1000 : null);
+    if (nextSeconds === 0) setTimerLabel("");
+  }
+
+  async function toggleRestAlert(setting: keyof RestAlerts) {
+    let nextValue = !restAlerts[setting];
+    if (setting === "notification" && nextValue) {
+      if (!("Notification" in window)) {
+        setNotice("Browser notifications are not supported on this device.");
+        window.setTimeout(() => setNotice(""), 2800);
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      nextValue = permission === "granted";
+      if (!nextValue) {
+        setNotice("Notification permission was not enabled.");
+        window.setTimeout(() => setNotice(""), 2800);
+      }
+    }
+    const next = { ...restAlerts, [setting]: nextValue };
+    setRestAlerts(next);
+    window.localStorage.setItem("liftly-rest-alerts", JSON.stringify(next));
+  }
+
+  function copyPreviousSet(
+    key: string,
+    previousSet: { weight: number; reps: number },
+  ) {
+    setEntries((current) => ({
+      ...current,
+      [key]: {
+        weight: String(previousSet.weight),
+        reps: String(previousSet.reps),
+      },
+    }));
+    setNotice("Previous weight and reps copied");
+    window.setTimeout(() => setNotice(""), 1800);
+  }
+
+  function confirmWorkoutReset() {
+    setCompleted({});
+    setEntries({});
+    setTimerLeft(0);
+    setTimerEndsAt(null);
+    setTimerLabel("");
+    setSessionElapsed(0);
+    setSessionPaused(false);
+    setWorkoutNote("");
+    setPendingReset(false);
   }
 
   async function savePlan(
@@ -974,24 +1278,35 @@ export default function Home() {
           action: "log-workout",
           profileId,
           workoutName: workout.title,
-          duration: workout.duration,
+          duration: currentDurationMinutes,
           exercisesCompleted: completedCount,
           totalExercises: workout.exercises.length,
+          note: workoutNote,
           sets: completedSetPayload,
         }),
       });
       if (!response.ok) throw new Error("Log failed");
       const data = await response.json();
       setLogs((current) => [data.log, ...current].slice(0, 20));
+      setCompletedWorkoutSummary({
+        workoutName: workout.title,
+        duration: currentDurationMinutes,
+        completedSets,
+        volume: currentWorkoutVolume,
+        personalRecords: data.personalRecords ?? [],
+        note: workoutNote.trim(),
+      });
+      clearStoredWorkoutDraft();
       setCompleted({});
       setEntries({});
       setTimerLeft(0);
+      setTimerEndsAt(null);
       setTimerLabel("");
-      setNotice(
-        data.personalRecords?.length
-          ? `New personal record: ${data.personalRecords.join(", ")}`
-          : "Workout saved to your history",
-      );
+      setSessionElapsed(0);
+      setSessionPaused(false);
+      setSessionStarted(false);
+      setWorkoutNote("");
+      setFinishReview(false);
       setView("progress");
     } catch {
       setNotice("Could not save this workout. Please try again.");
@@ -1028,7 +1343,9 @@ export default function Home() {
               aria-current={view === item.id ? "page" : undefined}
               className={view === item.id ? "active" : ""}
               key={item.id}
-              onClick={() => setView(item.id)}
+              onClick={() =>
+                item.id === "workout" ? openWorkout() : setView(item.id)
+              }
               type="button"
             >
               <span className="navIcon" aria-hidden="true">
@@ -1798,11 +2115,25 @@ export default function Home() {
                 </button>
                 <p className="eyebrow">ACTIVE SESSION · {workout.day}</p>
                 <h1>{workout.title}</h1>
-                <span>{workout.duration} min · {workout.exercises.length} exercises</span>
+                <span>
+                  Planned {workout.duration} min · {workout.exercises.length} exercises
+                </span>
               </div>
-              <div className="sessionProgress">
-                <strong>{completedSets}/{totalPlannedSets}</strong>
-                <span>sets completed</span>
+              <div className="workoutTitleActions">
+                <div className="sessionClock">
+                  <strong>{formatSessionTime(sessionElapsed)}</strong>
+                  <span>{sessionPaused ? "Session paused" : "Elapsed time"}</span>
+                  <button
+                    onClick={() => setSessionPaused((current) => !current)}
+                    type="button"
+                  >
+                    {sessionPaused ? "Resume" : "Pause"}
+                  </button>
+                </div>
+                <div className="sessionProgress">
+                  <strong>{completedSets}/{totalPlannedSets}</strong>
+                  <span>sets completed</span>
+                </div>
               </div>
             </div>
 
@@ -1919,11 +2250,21 @@ export default function Home() {
                                 key={key}
                               >
                                 <span className="setNumber">{setNumber}</span>
-                                <span className="previousSet">
-                                  {previousSet
-                                    ? `${previousSet.weight} × ${previousSet.reps}`
-                                    : "—"}
-                                </span>
+                                {previousSet ? (
+                                  <button
+                                    aria-label={`Copy previous set: ${previousSet.weight} kilograms for ${previousSet.reps} reps`}
+                                    className="previousSet"
+                                    onClick={() =>
+                                      copyPreviousSet(key, previousSet)
+                                    }
+                                    title="Use these values"
+                                    type="button"
+                                  >
+                                    {previousSet.weight} × {previousSet.reps}
+                                  </button>
+                                ) : (
+                                  <span className="previousSet">—</span>
+                                )}
                                 <label>
                                   <span className="srOnly">
                                     Weight for {exercise.name}, set {setNumber}
@@ -1988,12 +2329,7 @@ export default function Home() {
                 <div className="loggerFooter">
                   <button
                     className="secondaryAction"
-                    onClick={() => {
-                      setCompleted({});
-                      setEntries({});
-                      setTimerLeft(0);
-                      setTimerLabel("");
-                    }}
+                    onClick={() => setPendingReset(true)}
                     type="button"
                   >
                     Reset
@@ -2001,10 +2337,10 @@ export default function Home() {
                   <button
                     className="primaryAction"
                     disabled={completedCount === 0 || saving}
-                    onClick={logWorkout}
+                    onClick={() => setFinishReview(true)}
                     type="button"
                   >
-                    {saving ? "Saving…" : "Finish and save workout"}
+                    Finish workout
                   </button>
                 </div>
               </section>
@@ -2018,19 +2354,17 @@ export default function Home() {
                       ? `After ${timerLabel}`
                       : "Completing a set starts the timer"}
                   </span>
-                  <div>
+                  <div className="timerAdjustments">
                     <button
                       disabled={timerLeft <= 0}
-                      onClick={() =>
-                        setTimerLeft((current) => Math.max(0, current - 15))
-                      }
+                      onClick={() => adjustRestTimer(-15)}
                       type="button"
                     >
                       −15s
                     </button>
                     <button
                       disabled={timerLeft <= 0}
-                      onClick={() => setTimerLeft((current) => current + 15)}
+                      onClick={() => adjustRestTimer(15)}
                       type="button"
                     >
                       +15s
@@ -2039,11 +2373,35 @@ export default function Home() {
                       disabled={timerLeft <= 0}
                       onClick={() => {
                         setTimerLeft(0);
+                        setTimerEndsAt(null);
                         setTimerLabel("");
                       }}
                       type="button"
                     >
                       Skip
+                    </button>
+                  </div>
+                  <div className="restAlertControls">
+                    <button
+                      aria-pressed={restAlerts.sound}
+                      onClick={() => void toggleRestAlert("sound")}
+                      type="button"
+                    >
+                      Sound {restAlerts.sound ? "on" : "off"}
+                    </button>
+                    <button
+                      aria-pressed={restAlerts.vibration}
+                      onClick={() => void toggleRestAlert("vibration")}
+                      type="button"
+                    >
+                      Vibrate {restAlerts.vibration ? "on" : "off"}
+                    </button>
+                    <button
+                      aria-pressed={restAlerts.notification}
+                      onClick={() => void toggleRestAlert("notification")}
+                      type="button"
+                    >
+                      Notify {restAlerts.notification ? "on" : "off"}
                     </button>
                   </div>
                 </div>
@@ -2058,7 +2416,8 @@ export default function Home() {
                     <span>{Math.round((completedSets / totalPlannedSets) * 100)}%</span>
                   </div>
                   <div className="summaryRows">
-                    <p><span>Duration</span><strong>{workout.duration} min</strong></p>
+                    <p><span>Elapsed</span><strong>{formatSessionTime(sessionElapsed)}</strong></p>
+                    <p><span>Volume</span><strong>{currentWorkoutVolume.toLocaleString()} kg</strong></p>
                     <p><span>Sets completed</span><strong>{completedSets}</strong></p>
                     <p><span>Sets remaining</span><strong>{totalPlannedSets - completedSets}</strong></p>
                   </div>
@@ -2225,7 +2584,13 @@ export default function Home() {
                   </div>
                   {logs.map((log) => (
                     <div className="historyRow" key={log.id}>
-                      <span><span className="activityCheck">✓</span><strong>{log.workoutName}</strong></span>
+                      <span>
+                        <span className="activityCheck">✓</span>
+                        <span className="historyWorkoutCopy">
+                          <strong>{log.workoutName}</strong>
+                          {log.note && <small>{log.note}</small>}
+                        </span>
+                      </span>
                       <span>{formatDate(log.performedAt)}</span>
                       <span>{log.exercisesCompleted} / {log.totalExercises}</span>
                       <span>{log.duration} min</span>
@@ -2247,7 +2612,9 @@ export default function Home() {
             aria-current={view === item.id ? "page" : undefined}
             className={view === item.id ? "active" : ""}
             key={item.id}
-            onClick={() => setView(item.id)}
+            onClick={() =>
+              item.id === "workout" ? openWorkout() : setView(item.id)
+            }
             type="button"
           >
             <span>{item.icon}</span>
@@ -2255,6 +2622,168 @@ export default function Home() {
           </button>
         ))}
       </nav>
+
+      {savedDraft && (
+        <div
+          aria-labelledby="resume-workout-title"
+          aria-modal="true"
+          className="modalBackdrop"
+          role="dialog"
+        >
+          <div className="confirmModal">
+            <span className="confirmIcon">↻</span>
+            <p className="eyebrow">WORKOUT FOUND</p>
+            <h2 id="resume-workout-title">Resume your unfinished workout?</h2>
+            <p>
+              <strong>{savedDraft.workoutTitle}</strong> has saved weights,
+              reps and completed sets from your previous visit.
+            </p>
+            <div>
+              <button
+                className="secondaryAction"
+                onClick={discardSavedWorkout}
+                type="button"
+              >
+                Discard draft
+              </button>
+              <button
+                className="primaryAction"
+                onClick={resumeSavedWorkout}
+                type="button"
+              >
+                Resume workout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {finishReview && (
+        <div
+          aria-labelledby="finish-workout-title"
+          aria-modal="true"
+          className="modalBackdrop"
+          role="dialog"
+        >
+          <div className="confirmModal workoutFinishModal">
+            <span className="confirmIcon">✓</span>
+            <p className="eyebrow">FINISH WORKOUT</p>
+            <h2 id="finish-workout-title">Review your session</h2>
+            <div className="finishMetrics">
+              <span><strong>{completedSets}</strong> sets</span>
+              <span><strong>{currentWorkoutVolume.toLocaleString()}</strong> kg volume</span>
+              <span><strong>{currentDurationMinutes}</strong> min</span>
+            </div>
+            <label className="workoutNoteField">
+              <span>Workout note (optional)</span>
+              <textarea
+                maxLength={500}
+                onChange={(event) => setWorkoutNote(event.target.value)}
+                placeholder="Energy, technique, pain or anything to remember…"
+                rows={3}
+                value={workoutNote}
+              />
+              <small>{workoutNote.length}/500</small>
+            </label>
+            <div className="finishActions">
+              <button
+                className="secondaryAction"
+                disabled={saving}
+                onClick={() => setFinishReview(false)}
+                type="button"
+              >
+                Continue workout
+              </button>
+              <button
+                className="primaryAction"
+                disabled={saving}
+                onClick={() => void logWorkout()}
+                type="button"
+              >
+                {saving ? "Saving…" : "Save workout"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pendingReset && (
+        <div
+          aria-labelledby="reset-workout-title"
+          aria-modal="true"
+          className="modalBackdrop"
+          role="alertdialog"
+        >
+          <div className="confirmModal">
+            <span className="confirmIcon">×</span>
+            <p className="eyebrow">RESET SESSION</p>
+            <h2 id="reset-workout-title">Clear this workout?</h2>
+            <p>
+              All entered weights, reps, completed sets, notes and elapsed time
+              will be cleared.
+            </p>
+            <div>
+              <button
+                className="secondaryAction"
+                onClick={() => setPendingReset(false)}
+                type="button"
+              >
+                Keep workout
+              </button>
+              <button
+                className="primaryAction"
+                onClick={confirmWorkoutReset}
+                type="button"
+              >
+                Reset everything
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {completedWorkoutSummary && (
+        <div
+          aria-labelledby="workout-saved-title"
+          aria-modal="true"
+          className="modalBackdrop"
+          role="dialog"
+        >
+          <div className="confirmModal workoutCompleteModal">
+            <span className="confirmIcon">✓</span>
+            <p className="eyebrow">WORKOUT SAVED</p>
+            <h2 id="workout-saved-title">
+              {completedWorkoutSummary.workoutName} complete
+            </h2>
+            <div className="finishMetrics">
+              <span><strong>{completedWorkoutSummary.completedSets}</strong> sets</span>
+              <span><strong>{completedWorkoutSummary.volume.toLocaleString()}</strong> kg volume</span>
+              <span><strong>{completedWorkoutSummary.duration}</strong> min</span>
+            </div>
+            {completedWorkoutSummary.personalRecords.length > 0 && (
+              <div className="personalRecordSummary">
+                <span aria-hidden="true">★</span>
+                <p>
+                  <strong>New personal record</strong>
+                  {completedWorkoutSummary.personalRecords.join(", ")}
+                </p>
+              </div>
+            )}
+            {completedWorkoutSummary.note && (
+              <p className="savedWorkoutNote">
+                “{completedWorkoutSummary.note}”
+              </p>
+            )}
+            <button
+              className="primaryAction summaryDoneButton"
+              onClick={() => setCompletedWorkoutSummary(null)}
+              type="button"
+            >
+              View progress
+            </button>
+          </div>
+        </div>
+      )}
 
       {pendingWorkoutSwitch !== null && (
         <div

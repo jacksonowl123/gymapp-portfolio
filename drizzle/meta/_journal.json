@@ -22,6 +22,13 @@
       "when": 1785081768403,
       "tag": "0002_legal_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1785577211562,
+      "tag": "0003_smiling_leper_queen",
+      "breakpoints": true
     }
   ]
 }

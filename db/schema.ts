@@ -19,6 +19,7 @@ export const workoutLogs = sqliteTable("workout_logs", {
   duration: integer("duration").notNull(),
   exercisesCompleted: integer("exercises_completed").notNull(),
   totalExercises: integer("total_exercises").notNull(),
+  note: text("note").notNull().default(""),
   performedAt: text("performed_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
