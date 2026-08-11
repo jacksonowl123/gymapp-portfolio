@@ -111,7 +111,7 @@ input:focus-visible {
   color: #73766e;
   display: block;
   font-family: var(--font-mono), monospace;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: .15em;
   margin: 0 12px 10px;
@@ -195,7 +195,7 @@ input:focus-visible {
 
 .sidePlan > span:not(.sidePlanLabel) {
   color: #858880;
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .miniProgress {
@@ -218,7 +218,6 @@ input:focus-visible {
   border: 0;
   border-top: 1px solid #34362f;
   color: #f4f4ed;
-  cursor: pointer;
   display: grid;
   gap: 10px;
   grid-template-columns: 34px 1fr auto;
@@ -246,12 +245,12 @@ input:focus-visible {
 }
 
 .userCard strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .userCard small {
   color: #81837c;
-  font-size: 8px;
+  font-size: 10px;
   margin-top: 2px;
 }
 
@@ -275,7 +274,7 @@ input:focus-visible {
 .appHeader p {
   color: var(--muted);
   font-family: var(--font-mono), monospace;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 650;
   letter-spacing: .04em;
   margin: 0;
@@ -321,11 +320,11 @@ input:focus-visible {
   border-radius: 7px;
   cursor: pointer;
   display: inline-flex;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 750;
   gap: 8px;
   justify-content: center;
-  min-height: 40px;
+  min-height: 44px;
   padding: 0 15px;
   transition: transform 150ms ease, background 150ms ease;
 }
@@ -374,7 +373,7 @@ input:focus-visible {
 .eyebrow {
   color: #8b8d85;
   font-family: var(--font-mono), monospace;
-  font-size: 8px;
+  font-size: 10px;
   font-weight: 750;
   letter-spacing: .14em;
   margin: 0 0 8px;
@@ -817,6 +816,10 @@ input:focus-visible {
   border: 0;
   color: var(--muted);
   cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  min-height: 44px;
+  padding: 0 4px;
 }
 
 .weekList {
@@ -955,6 +958,11 @@ input:focus-visible {
   width: 27px;
 }
 
+.activityCheck.partial {
+  background: #fff0e9;
+  color: #b6532f;
+}
+
 .emptyActivity {
   align-items: center;
   display: grid;
@@ -990,13 +998,20 @@ input:focus-visible {
   display: grid;
   gap: 17px;
   grid-template-columns: minmax(0, 1.55fr) minmax(280px, .45fr);
+  min-width: 0;
+}
+
+.planWorkspace > *,
+.planBoard,
+.planSide {
+  min-width: 0;
 }
 
 .panelTitle > span {
   background: #f1f1ed;
   border-radius: 999px;
   color: var(--muted);
-  font-size: 8px;
+  font-size: 10px;
   padding: 7px 9px;
 }
 
@@ -1047,14 +1062,14 @@ input:focus-visible {
 .dayPlanBadge small {
   color: var(--muted);
   font-family: var(--font-mono), monospace;
-  font-size: 6px;
+  font-size: 9px;
   margin-bottom: 3px;
 }
 
 .dayPlanBadge strong {
   color: var(--accent);
   font-family: var(--font-mono), monospace;
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .dayPlanCopy {
@@ -1064,12 +1079,12 @@ input:focus-visible {
 }
 
 .dayPlanCopy strong {
-  font-size: 11px;
+  font-size: 14px;
 }
 
 .dayPlanCopy small {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
   margin-top: 4px;
 }
 
@@ -1082,8 +1097,8 @@ input:focus-visible {
   border: 1px solid var(--line);
   border-radius: 7px;
   cursor: pointer;
-  font-size: 9px;
-  min-height: 42px;
+  font-size: 12px;
+  min-height: 44px;
   padding: 0 34px 0 12px;
   width: 100%;
 }
@@ -1107,9 +1122,9 @@ input:focus-visible {
   border-radius: 6px;
   color: var(--ink);
   cursor: pointer;
-  font-size: 7px;
+  font-size: 11px;
   font-weight: 700;
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 9px;
 }
 
@@ -1136,13 +1151,13 @@ input:focus-visible {
   align-items: center;
   display: grid;
   gap: 8px;
-  grid-template-columns: 28px minmax(150px, 1fr) 52px 68px 68px 84px 96px;
+  grid-template-columns: 44px minmax(145px, 1fr) 52px 64px 64px 82px 138px;
 }
 
 .exerciseEditorHead {
   color: var(--muted);
   font-family: var(--font-mono), monospace;
-  font-size: 6px;
+  font-size: 9px;
   font-weight: 700;
   padding: 0 4px 7px;
 }
@@ -1168,11 +1183,11 @@ input:focus-visible {
   cursor: grab;
   display: flex;
   font-size: 18px;
-  height: 36px;
+  height: 44px;
   justify-content: center;
   padding: 0;
   touch-action: none;
-  width: 28px;
+  width: 44px;
 }
 
 .dragExercise:active {
@@ -1185,8 +1200,8 @@ input:focus-visible {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 6px;
-  font-size: 9px;
-  height: 38px;
+  font-size: 12px;
+  height: 44px;
   min-width: 0;
   padding: 0 9px;
   width: 100%;
@@ -1242,9 +1257,9 @@ input:focus-visible {
   cursor: pointer;
   display: flex;
   font-size: 10px;
-  height: 30px;
+  height: 44px;
   justify-content: center;
-  width: 28px;
+  width: 44px;
 }
 
 .exerciseOrderActions > button:hover:not(:disabled) {
@@ -1268,15 +1283,38 @@ input:focus-visible {
   border-radius: 6px;
   color: var(--ink);
   cursor: pointer;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 700;
-  min-height: 39px;
+  min-height: 44px;
   width: 100%;
 }
 
 .addExercise:hover {
   border-color: var(--orange);
   color: var(--orange);
+}
+
+.duplicateExerciseWarning {
+  align-items: center;
+  background: #fff1eb;
+  border: 1px solid #efb8a4;
+  border-radius: 7px;
+  color: #8f3f22;
+  display: flex;
+  font-size: 11px;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+}
+
+.duplicateExerciseWarning strong {
+  white-space: nowrap;
+}
+
+.exerciseEditRow.duplicate {
+  background: #fffaf7;
+  box-shadow: inset 3px 0 0 #ec6335;
+  padding-left: 5px;
 }
 
 .planSide {
@@ -1716,7 +1754,7 @@ input:focus-visible {
 .setLoggerHead {
   color: var(--muted);
   font-family: var(--font-mono), monospace;
-  font-size: 6px;
+  font-size: 9px;
   font-weight: 700;
   padding: 0 4px 6px;
 }
@@ -1741,10 +1779,10 @@ input:focus-visible {
   border-radius: 5px;
   display: flex;
   font-family: var(--font-mono), monospace;
-  font-size: 8px;
-  height: 28px;
+  font-size: 11px;
+  height: 36px;
   justify-content: center;
-  width: 28px;
+  width: 36px;
 }
 
 .setLoggerRow.done .setNumber {
@@ -1755,7 +1793,7 @@ input:focus-visible {
 .previousSet {
   color: var(--muted);
   font-family: var(--font-mono), monospace;
-  font-size: 8px;
+  font-size: 10px;
 }
 
 button.previousSet {
@@ -1763,7 +1801,7 @@ button.previousSet {
   border: 1px dashed #cccdc6;
   border-radius: 5px;
   cursor: pointer;
-  min-height: 30px;
+  min-height: 44px;
   padding: 0 7px;
   text-align: left;
 }
@@ -1777,7 +1815,8 @@ button.previousSet:hover {
 .setLoggerRow input {
   border: 1px solid var(--line);
   border-radius: 6px;
-  height: 38px;
+  font-size: 12px;
+  height: 44px;
   min-width: 0;
   padding: 0 9px;
   width: 100%;
@@ -2278,6 +2317,11 @@ button.previousSet:hover {
   color: #67863d !important;
   justify-self: start;
   padding: 6px 9px;
+}
+
+.statusPill.partial {
+  background: #fff0e9;
+  color: #a84d2c !important;
 }
 
 .mobileNav {
@@ -2809,7 +2853,7 @@ button.previousSet:hover {
   }
 
   .planSide {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .aiFutureCard > div {
@@ -2840,7 +2884,7 @@ button.previousSet:hover {
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .appShell {
     display: block;
     padding-bottom: 68px;
@@ -2964,7 +3008,7 @@ button.previousSet:hover {
   .exerciseEditorHead,
   .exerciseEditRow {
     gap: 6px;
-    grid-template-columns: 24px minmax(95px, 1fr) 44px 56px 56px 72px 76px;
+    grid-template-columns: 44px minmax(95px, 1fr) 44px 56px 56px 72px 138px;
   }
 
   .planRows button {
@@ -3068,13 +3112,13 @@ button.previousSet:hover {
     color: #8f918a;
     display: flex;
     flex-direction: column;
-    font-size: 7px;
+    font-size: 10px;
     gap: 4px;
     justify-content: center;
   }
 
   .mobileNav button span {
-    font-size: 15px;
+    font-size: 18px;
   }
 
   .mobileNav button.active {
@@ -3093,6 +3137,16 @@ button.previousSet:hover {
 
   .pageTitle > button {
     width: 100%;
+  }
+
+  .planSaveAction {
+    bottom: 76px;
+    box-shadow: 0 10px 30px rgba(29, 30, 27, .24);
+    left: 16px;
+    position: fixed;
+    right: 16px;
+    width: auto !important;
+    z-index: 7;
   }
 
   .workoutTitleActions {
@@ -3227,7 +3281,7 @@ button.previousSet:hover {
 
   .exerciseEditRow {
     align-items: end;
-    grid-template-columns: 28px minmax(90px, 1fr) 48px 64px;
+    grid-template-columns: 44px minmax(90px, 1fr) 60px 64px;
     padding: 10px;
     background: #fff;
     border: 1px solid var(--line);
@@ -3273,7 +3327,7 @@ button.previousSet:hover {
   .fieldCaption {
     color: var(--muted);
     display: block;
-    font-size: 6px;
+    font-size: 10px;
     font-weight: 700;
     margin-bottom: 4px;
   }
@@ -3298,22 +3352,22 @@ button.previousSet:hover {
   }
 
   .setLoggerHead {
-    font-size: 5px;
+    font-size: 8px;
   }
 
   .setLoggerRow input {
-    font-size: 8px;
-    height: 36px;
+    font-size: 12px;
+    height: 44px;
     padding-inline: 6px;
   }
 
   .setLoggerRow .doneControl span {
-    height: 24px;
-    width: 24px;
+    height: 44px;
+    width: 44px;
   }
 
   .previousSet {
-    font-size: 6px;
+    font-size: 10px;
   }
 
   .progressExerciseSelect,

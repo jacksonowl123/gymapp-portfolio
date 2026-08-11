@@ -471,12 +471,47 @@ function buildRecommendation(profile: Profile): Recommendation {
 }
 
 function formatDate(value: string) {
-  const date = new Date(value);
+  const date = parseWorkoutDate(value);
   if (Number.isNaN(date.getTime())) return "Recently";
   return date.toLocaleDateString("en", {
     day: "numeric",
     month: "short",
   });
+}
+
+function parseWorkoutDate(value: string) {
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(value)
+    ? `${value.replace(" ", "T")}Z`
+    : value;
+  return new Date(normalized);
+}
+
+function startOfLocalWeek(value = new Date()) {
+  const start = new Date(value);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  return start;
+}
+
+function duplicateExerciseNames(exercises: Exercise[]) {
+  const names = new Map<string, { count: number; label: string }>();
+  for (const exercise of exercises) {
+    const label = exercise.name.trim();
+    if (!label) continue;
+    const key = label.toLowerCase();
+    const current = names.get(key);
+    names.set(key, {
+      count: (current?.count ?? 0) + 1,
+      label: current?.label ?? label,
+    });
+  }
+  return Array.from(names.values())
+    .filter((item) => item.count > 1)
+    .map((item) => item.label);
+}
+
+function workoutCompletionStatus(log: WorkoutLog) {
+  return log.exercisesCompleted >= log.totalExercises ? "Completed" : "Partial";
 }
 
 function EmptyActivity({ onStart }: { onStart: () => void }) {
@@ -589,8 +624,19 @@ export default function Home() {
   );
   const currentDurationMinutes = Math.max(1, Math.ceil(sessionElapsed / 60));
   const weeklyTarget = recommendation.workouts.length;
-  const weeklyDone = Math.min(logs.length, weeklyTarget);
-  const weeklyPercent = Math.round((weeklyDone / weeklyTarget) * 100);
+  const weeklyLogs = useMemo(() => {
+    const start = startOfLocalWeek();
+    const end = new Date(start);
+    end.setDate(end.getDate() + 7);
+    return logs.filter((log) => {
+      const performedAt = parseWorkoutDate(log.performedAt);
+      return performedAt >= start && performedAt < end;
+    });
+  }, [logs]);
+  const weeklyDone = Math.min(weeklyLogs.length, weeklyTarget);
+  const weeklyPercent = weeklyTarget
+    ? Math.round((weeklyDone / weeklyTarget) * 100)
+    : 0;
   const totalMinutes = logs.reduce((sum, log) => sum + log.duration, 0);
   const loggedSets = logs.flatMap((log) => log.sets ?? []);
   const totalVolume = Math.round(
@@ -817,16 +863,35 @@ export default function Home() {
   ]);
 
   const activityBars = useMemo(() => {
-    const source = logs.slice(0, 7).reverse();
+    const start = startOfLocalWeek();
     return Array.from({ length: 7 }, (_, index) => {
-      const log = source[index];
-      return log
-        ? Math.max(28, Math.round((log.exercisesCompleted / log.totalExercises) * 100))
-        : index === 6
-          ? 12
-          : 6;
+      const dayStart = new Date(start);
+      dayStart.setDate(dayStart.getDate() + index);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setDate(dayEnd.getDate() + 1);
+      const dayLogs = weeklyLogs.filter((log) => {
+        const performedAt = parseWorkoutDate(log.performedAt);
+        return performedAt >= dayStart && performedAt < dayEnd;
+      });
+      if (!dayLogs.length) return 6;
+      const completedExercises = dayLogs.reduce(
+        (sum, log) => sum + log.exercisesCompleted,
+        0,
+      );
+      const totalExercises = dayLogs.reduce(
+        (sum, log) => sum + log.totalExercises,
+        0,
+      );
+      return Math.max(
+        28,
+        Math.round((completedExercises / Math.max(1, totalExercises)) * 100),
+      );
     });
-  }, [logs]);
+  }, [weeklyLogs]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [view]);
 
   function clearStoredWorkoutDraft() {
     if (profileId) {
@@ -1049,6 +1114,17 @@ export default function Home() {
     ) {
       setNotice("Add sets and reps for every exercise before saving.");
       window.setTimeout(() => setNotice(""), 2600);
+      return false;
+    }
+    const duplicateWorkout = next.workouts.find(
+      (item) => duplicateExerciseNames(item.exercises).length > 0,
+    );
+    if (duplicateWorkout) {
+      const duplicates = duplicateExerciseNames(duplicateWorkout.exercises);
+      setNotice(
+        `Remove duplicate ${duplicates.join(", ")} from ${duplicateWorkout.day} before saving.`,
+      );
+      window.setTimeout(() => setNotice(""), 3200);
       return false;
     }
     const nextProfile = { ...profile, days: next.workouts.length };
@@ -1333,14 +1409,13 @@ export default function Home() {
           </div>
         </div>
 
-        <button className="userCard" type="button">
+        <div className="userCard">
           <span className="avatar">JL</span>
           <span>
-            <strong>My profile</strong>
-            <small>Lift tracker</small>
+            <strong>My training</strong>
+            <small>Personal lift tracker</small>
           </span>
-          <span aria-hidden="true">•••</span>
-        </button>
+        </div>
       </aside>
 
       <section className="appMain">
@@ -1352,14 +1427,6 @@ export default function Home() {
             <p>{today}</p>
           </div>
           <div className="headerActions">
-            <button
-              className="headerIcon"
-              aria-label="Notifications"
-              type="button"
-            >
-              ◌
-              <span />
-            </button>
             <button
               className="primaryAction"
               onClick={() => openWorkout()}
@@ -1511,7 +1578,7 @@ export default function Home() {
                     onClick={() => setView("plan")}
                     type="button"
                   >
-                    •••
+                    Manage plan
                   </button>
                 </div>
                 <div className="weekList">
@@ -1595,7 +1662,7 @@ export default function Home() {
                 <span>Choose what you want to train on each day of the week.</span>
               </div>
               <button
-                className="primaryAction"
+                className="primaryAction planSaveAction"
                 disabled={saving}
                 onClick={saveManualPlan}
                 type="button"
@@ -1624,6 +1691,10 @@ export default function Home() {
                     ) ?? trainingOptions[0];
                     const isRest = assignment === "rest";
                     const isExpanded = expandedDay === day && !isRest;
+                    const duplicateNames = duplicateExerciseNames(exercises);
+                    const duplicateKeys = new Set(
+                      duplicateNames.map((name) => name.toLowerCase()),
+                    );
                     return (
                       <div className="dayPlanGroup" key={day}>
                         <div className={isRest ? "dayPlanRow rest" : "dayPlanRow"}>
@@ -1687,6 +1758,14 @@ export default function Home() {
                               <span>REST</span>
                               <span>ORDER</span>
                             </div>
+                            {duplicateNames.length > 0 && (
+                              <div className="duplicateExerciseWarning" role="status">
+                                <strong>Duplicate exercise</strong>
+                                <span>
+                                  Remove extra {duplicateNames.join(", ")} entries before saving.
+                                </span>
+                              </div>
+                            )}
                             {exercises.map((exercise, exerciseIndex) => {
                               const hydrated = hydrateExercise(exercise);
                               const isDragging =
@@ -1702,6 +1781,9 @@ export default function Home() {
                                     "exerciseEditRow",
                                     isDragging ? "dragging" : "",
                                     isDropTarget ? "dropTarget" : "",
+                                    duplicateKeys.has(hydrated.name.trim().toLowerCase())
+                                      ? "duplicate"
+                                      : "",
                                   ].filter(Boolean).join(" ")}
                                   key={`${day}-${exerciseIndex}`}
                                   onDragOver={(event) => {
@@ -2420,12 +2502,12 @@ export default function Home() {
               <article className="chartPanel">
                 <div className="panelTitle">
                   <div>
-                    <p className="eyebrow">LAST 7 SESSIONS</p>
+                    <p className="eyebrow">THIS WEEK</p>
                     <h2>Training consistency</h2>
                   </div>
-                  <span>{logs.length} total workouts</span>
+                  <span>{weeklyLogs.length} workouts this week</span>
                 </div>
-                <div className="barChart" aria-label="Recent workout completion chart">
+                <div className="barChart" aria-label="Current week workout completion chart">
                   {activityBars.map((height, index) => (
                     <div key={index}>
                       <span style={{ height: `${height}%` }} />
@@ -2553,7 +2635,15 @@ export default function Home() {
                   {logs.map((log) => (
                     <div className="historyRow" key={log.id}>
                       <span>
-                        <span className="activityCheck">✓</span>
+                        <span
+                          className={
+                            workoutCompletionStatus(log) === "Completed"
+                              ? "activityCheck"
+                              : "activityCheck partial"
+                          }
+                        >
+                          {workoutCompletionStatus(log) === "Completed" ? "✓" : "–"}
+                        </span>
                         <span className="historyWorkoutCopy">
                           <strong>{log.workoutName}</strong>
                           {log.note && <small>{log.note}</small>}
@@ -2562,7 +2652,15 @@ export default function Home() {
                       <span>{formatDate(log.performedAt)}</span>
                       <span>{log.exercisesCompleted} / {log.totalExercises}</span>
                       <span>{log.duration} min</span>
-                      <span className="statusPill">Completed</span>
+                      <span
+                        className={
+                          workoutCompletionStatus(log) === "Completed"
+                            ? "statusPill"
+                            : "statusPill partial"
+                        }
+                      >
+                        {workoutCompletionStatus(log)}
+                      </span>
                     </div>
                   ))}
                 </div>
