@@ -4484,7 +4484,8 @@ button.previousSet:hover {
 
 @media (max-width: 1100px) {
   .appPage button,
-  .appHeader button {
+  .appHeader button,
+  .confirmModal button {
     min-height: 44px;
     min-width: 44px;
   }
@@ -4503,6 +4504,7 @@ button.previousSet:hover {
 @media (hover: none) and (pointer: coarse) {
   .appPage button,
   .appHeader button,
+  .confirmModal button,
   .appPage input:not([type="checkbox"]):not([type="range"]),
   .appPage select,
   .appPage textarea {
@@ -4510,7 +4512,8 @@ button.previousSet:hover {
   }
 
   .appPage button,
-  .appHeader button {
+  .appHeader button,
+  .confirmModal button {
     min-width: 44px;
   }
 }
