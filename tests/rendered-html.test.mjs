@@ -83,6 +83,21 @@ test("keeps the expanded plan editor contained on laptop and tablet widths", asy
   assert.match(styles, /\.duplicateExerciseWarning[\s\S]*?flex-wrap: wrap/);
 });
 
+test("supports iPad Air and iPhone Pro Max safe responsive layouts", async () => {
+  const [layout, styles] = await Promise.all([
+    source("app/layout.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(layout, /width: "device-width"/);
+  assert.match(layout, /viewportFit: "cover"/);
+  assert.match(styles, /@media \(max-width: 1100px\)[\s\S]*?\.sidebar[\s\S]*?display: none/);
+  assert.match(styles, /\.mobileNav[\s\S]*?safe-area-inset-bottom/);
+  assert.match(styles, /@media \(min-width: 901px\) and \(max-width: 1100px\)/);
+  assert.match(styles, /\.appPage button,[\s\S]*?min-height: 44px/);
+  assert.match(styles, /\.appPage:has\(\.planSaveAction\)[\s\S]*?padding-bottom/);
+});
+
 test("persists workout notes in D1 with a migration", async () => {
   const [route, schema, migration] = await Promise.all([
     source("app/api/fitness/route.ts"),

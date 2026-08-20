@@ -3235,10 +3235,10 @@ button.previousSet:hover {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .appShell {
     display: block;
-    padding-bottom: 68px;
+    padding-bottom: calc(68px + env(safe-area-inset-bottom));
   }
 
   .sidebar {
@@ -3248,6 +3248,8 @@ button.previousSet:hover {
   .appHeader {
     min-height: 66px;
     padding: 0 17px;
+    padding-left: max(17px, env(safe-area-inset-left));
+    padding-right: max(17px, env(safe-area-inset-right));
   }
 
   .appHeader > div:first-child {
@@ -3280,7 +3282,9 @@ button.previousSet:hover {
   }
 
   .appPage {
-    padding: 26px 16px 38px;
+    padding: 26px 16px calc(38px + env(safe-area-inset-bottom));
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
   }
 
   .pageTitle {
@@ -3450,7 +3454,8 @@ button.previousSet:hover {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     left: 0;
-    min-height: 64px;
+    min-height: calc(64px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
     position: fixed;
     right: 0;
     z-index: 10;
@@ -3474,6 +3479,26 @@ button.previousSet:hover {
 
   .mobileNav button.active {
     color: var(--orange);
+  }
+}
+
+@media (min-width: 901px) and (max-width: 1100px) {
+  .appPage {
+    padding: 30px 28px calc(88px + env(safe-area-inset-bottom));
+    padding-left: max(28px, env(safe-area-inset-left));
+    padding-right: max(28px, env(safe-area-inset-right));
+  }
+
+  .statGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .planSide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trainingHero {
+    min-height: 390px;
   }
 }
 
@@ -3603,13 +3628,24 @@ button.previousSet:hover {
   }
 
   .planSaveAction {
-    bottom: 76px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
     box-shadow: 0 10px 30px rgba(29, 30, 27, .24);
     left: 16px;
     position: fixed;
     right: 16px;
     width: auto !important;
     z-index: 7;
+  }
+
+  .planSaveAction:disabled {
+    background: #5d5e58;
+    border-color: #5d5e58;
+    color: #fff;
+    opacity: 1;
+  }
+
+  .appPage:has(.planSaveAction) {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom));
   }
 
   .workoutTitleActions {
@@ -4438,12 +4474,39 @@ button.previousSet:hover {
   min-width: 4px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .mobileNav { grid-template-columns: repeat(6, 1fr); }
   .mobileNav button { font-size: 8px; }
   .mobileNav button span { font-size: 16px; }
   .coachGrid { grid-template-columns: 1fr; }
   .sessionAside { position: static; }
+}
+
+@media (max-width: 1100px) {
+  .appPage button,
+  .appHeader button {
+    min-height: 44px;
+  }
+
+  .appPage input:not([type="checkbox"]):not([type="range"]),
+  .appPage select,
+  .appPage textarea {
+    min-height: 44px;
+  }
+
+  .mobileNav button {
+    min-height: 64px;
+  }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  .appPage button,
+  .appHeader button,
+  .appPage input:not([type="checkbox"]):not([type="range"]),
+  .appPage select,
+  .appPage textarea {
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 650px) {
