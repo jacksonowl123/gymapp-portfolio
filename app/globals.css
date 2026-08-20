@@ -1311,6 +1311,67 @@ input:focus-visible {
   white-space: nowrap;
 }
 
+.duplicateExerciseWarning button {
+  background: #8f3f22;
+  border: 0;
+  border-radius: 5px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 750;
+  margin-left: auto;
+  min-height: 34px;
+  padding: 0 11px;
+  white-space: nowrap;
+}
+
+.planValidationBanner {
+  align-items: center;
+  background: #fff1eb;
+  border: 1px solid #efb8a4;
+  border-radius: 9px;
+  color: #79371f;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 36px 1fr auto;
+  margin: -12px 0 20px;
+  padding: 13px 15px;
+}
+
+.planValidationBanner > span {
+  align-items: center;
+  background: #8f3f22;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  font-weight: 850;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.planValidationBanner strong {
+  display: block;
+  font-size: 13px;
+}
+
+.planValidationBanner p {
+  font-size: 11px;
+  margin: 3px 0 0;
+}
+
+.planValidationBanner button {
+  background: #fff;
+  border: 1px solid #d89f8a;
+  border-radius: 6px;
+  color: #79371f;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 750;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
 .exerciseEditRow.duplicate {
   background: #fffaf7;
   box-shadow: inset 3px 0 0 #ec6335;
@@ -1611,7 +1672,7 @@ input:focus-visible {
   color: var(--accent);
   display: flex;
   font-family: var(--font-mono), monospace;
-  font-size: 8px;
+  font-size: 10px;
   height: 38px;
   justify-content: center;
 }
@@ -1623,19 +1684,19 @@ input:focus-visible {
 }
 
 .workoutChoiceList strong {
-  font-size: 9px;
+  font-size: 12px;
 }
 
 .workoutChoiceList small {
   color: var(--muted);
-  font-size: 7px;
+  font-size: 10px;
   margin-top: 4px;
 }
 
 .workoutChoiceState {
   color: var(--muted);
   font-family: var(--font-mono), monospace;
-  font-size: 5px;
+  font-size: 8px;
   position: absolute;
   right: 8px;
   top: 7px;
@@ -1662,7 +1723,7 @@ input:focus-visible {
 
 .sessionProgress span {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 10px;
 }
 
 .workoutTitleActions {
@@ -1689,7 +1750,7 @@ input:focus-visible {
 
 .sessionClock span {
   color: #9a9c95;
-  font-size: 7px;
+  font-size: 10px;
   margin: 2px 0 6px;
 }
 
@@ -1699,7 +1760,7 @@ input:focus-visible {
   border-radius: 4px;
   color: #e6e7e1;
   cursor: pointer;
-  font-size: 7px;
+  font-size: 10px;
   min-height: 24px;
   padding: 0 11px;
 }
@@ -1739,7 +1800,7 @@ input:focus-visible {
 .previousPerformance {
   color: #668449;
   font-family: var(--font-mono), monospace;
-  font-size: 7px;
+  font-size: 10px;
   margin-top: 7px;
 }
 
@@ -1754,7 +1815,7 @@ input:focus-visible {
 .setLoggerHead {
   color: var(--muted);
   font-family: var(--font-mono), monospace;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   padding: 0 4px 6px;
 }
@@ -1870,7 +1931,7 @@ button.previousSet:hover {
 
 .loggerExercise small {
   color: var(--muted);
-  font-size: 8px;
+  font-size: 11px;
   margin-top: 4px;
 }
 
@@ -1953,7 +2014,7 @@ button.previousSet:hover {
 .restTimer > span {
   color: #969990;
   display: block;
-  font-size: 7px;
+  font-size: 10px;
   min-height: 20px;
 }
 
@@ -1970,7 +2031,7 @@ button.previousSet:hover {
   border-radius: 5px;
   color: #d4d5cf;
   cursor: pointer;
-  font-size: 7px;
+  font-size: 10px;
   height: 32px;
 }
 
@@ -1987,7 +2048,7 @@ button.previousSet:hover {
 }
 
 .restTimer .restAlertControls button {
-  font-size: 6px;
+  font-size: 9px;
   padding: 0 3px;
 }
 
@@ -2034,7 +2095,7 @@ button.previousSet:hover {
 
 .summaryRows p {
   display: flex;
-  font-size: 9px;
+  font-size: 11px;
   justify-content: space-between;
   margin: 0;
   padding-top: 12px;
@@ -2054,13 +2115,13 @@ button.previousSet:hover {
 .tipCard > span {
   color: #6c8e3d;
   font-family: var(--font-mono), monospace;
-  font-size: 7px;
+  font-size: 9px;
   font-weight: 750;
 }
 
 .tipCard p {
   color: #62754a;
-  font-size: 9px;
+  font-size: 11px;
   line-height: 1.55;
   margin: 7px 0 0;
 }
@@ -3348,11 +3409,20 @@ button.previousSet:hover {
   .setLoggerHead,
   .setLoggerRow {
     gap: 6px;
-    grid-template-columns: 30px 58px minmax(55px, 1fr) 30px;
+    grid-template-columns: 30px 58px minmax(70px, 1fr) 44px;
   }
 
   .setLoggerHead {
-    font-size: 8px;
+    font-size: 10px;
+  }
+
+  .setLoggerRow > label:not(.doneControl) {
+    grid-column: 3;
+  }
+
+  .setLoggerRow > .doneControl {
+    grid-column: 4;
+    grid-row: auto;
   }
 
   .setLoggerRow input {
@@ -3416,9 +3486,29 @@ button.previousSet:hover {
     width: calc(50% - 4px);
   }
 
-  .doneControl {
+  .loggerRow > .doneControl {
     grid-column: 3;
     grid-row: 1;
+  }
+
+  .duplicateExerciseWarning {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .duplicateExerciseWarning button {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .planValidationBanner {
+    align-items: start;
+    grid-template-columns: 32px 1fr;
+  }
+
+  .planValidationBanner button {
+    grid-column: 2;
+    justify-self: start;
   }
 
   .sessionAside {

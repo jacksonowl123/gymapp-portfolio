@@ -28,18 +28,27 @@ test("keeps unfinished workout sessions recoverable", async () => {
   assert.match(page, /liftly-workout-draft-/);
   assert.match(page, /Resume your unfinished workout\?/);
   assert.match(page, /Workout restored/);
+  assert.match(page, /MAX_DRAFT_IDLE_SECONDS/);
+  assert.match(page, /inactive time was not added/);
   assert.match(page, /Previous reps copied/);
   assert.match(page, /Notification\.requestPermission/);
 });
 
 test("uses calendar-accurate weekly progress and protects plan quality", async () => {
-  const page = await source("app/page.tsx");
+  const [page, styles] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/globals.css"),
+  ]);
 
   assert.match(page, /startOfLocalWeek/);
   assert.match(page, /weeklyLogs/);
   assert.match(page, /workoutCompletionStatus/);
   assert.match(page, /duplicateExerciseNames/);
   assert.match(page, /Duplicate exercise/);
+  assert.match(page, /disabled={saving \|\| hasPlanDuplicates}/);
+  assert.match(page, /Remove duplicates/);
+  assert.match(styles, /\.setLoggerRow > \.doneControl/);
+  assert.match(styles, /\.loggerRow > \.doneControl/);
 });
 
 test("persists workout notes in D1 with a migration", async () => {

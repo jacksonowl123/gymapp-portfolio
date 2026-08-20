@@ -100,6 +100,8 @@ type RestAlerts = {
 };
 
 const dayLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const MAX_DRAFT_IDLE_SECONDS = 2 * 60 * 60;
+const MAX_WORKOUT_SESSION_SECONDS = 6 * 60 * 60;
 
 const exerciseLibrary = {
   upper: [
@@ -510,6 +512,31 @@ function duplicateExerciseNames(exercises: Exercise[]) {
     .map((item) => item.label);
 }
 
+function restoredWorkoutTiming(draft: WorkoutDraft, now = Date.now()) {
+  const savedElapsed = Number(draft.elapsedSeconds);
+  const savedElapsedIsInvalid =
+    !Number.isFinite(savedElapsed) ||
+    savedElapsed < 0 ||
+    savedElapsed > MAX_WORKOUT_SESSION_SECONDS;
+  const elapsedSeconds = savedElapsedIsInvalid ? 0 : Math.round(savedElapsed);
+  const savedAt = Number(draft.savedAt);
+  const idleSeconds = Number.isFinite(savedAt)
+    ? Math.max(0, Math.round((now - savedAt) / 1000))
+    : MAX_DRAFT_IDLE_SECONDS + 1;
+  const isStale = idleSeconds > MAX_DRAFT_IDLE_SECONDS;
+  const candidateElapsed =
+    elapsedSeconds + (!draft.paused && !isStale ? idleSeconds : 0);
+  const exceedsSessionLimit = candidateElapsed > MAX_WORKOUT_SESSION_SECONDS;
+  const inactiveTimeRemoved =
+    savedElapsedIsInvalid || isStale || exceedsSessionLimit;
+
+  return {
+    elapsedSeconds: exceedsSessionLimit ? elapsedSeconds : candidateElapsed,
+    inactiveTimeRemoved,
+    paused: draft.paused || inactiveTimeRemoved,
+  };
+}
+
 function workoutCompletionStatus(log: WorkoutLog) {
   return log.exercisesCompleted >= log.totalExercises ? "Completed" : "Partial";
 }
@@ -591,6 +618,10 @@ export default function Home() {
   );
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
+  const duplicatePlanDays = dayLabels.filter(
+    (day) => duplicateExerciseNames(dayExercises[day] ?? []).length > 0,
+  );
+  const hasPlanDuplicates = duplicatePlanDays.length > 0;
 
   const workout =
     recommendation.workouts[selectedWorkout] ?? recommendation.workouts[0];
@@ -933,27 +964,35 @@ export default function Home() {
       window.setTimeout(() => setNotice(""), 2800);
       return;
     }
-    const extraElapsed = savedDraft.paused
-      ? 0
-      : Math.max(0, Math.round((Date.now() - savedDraft.savedAt) / 1000));
+    const restoredTiming = restoredWorkoutTiming(savedDraft);
+    const restoredTimerEndsAt =
+      !restoredTiming.inactiveTimeRemoved &&
+      savedDraft.timerEndsAt &&
+      savedDraft.timerEndsAt > Date.now()
+        ? savedDraft.timerEndsAt
+        : null;
     setSelectedWorkout(workoutIndex);
     setEntries(savedDraft.entries);
     setCompleted(savedDraft.completed);
-    setSessionElapsed(savedDraft.elapsedSeconds + extraElapsed);
-    setSessionPaused(savedDraft.paused);
+    setSessionElapsed(restoredTiming.elapsedSeconds);
+    setSessionPaused(restoredTiming.paused);
     setSessionStarted(true);
     setWorkoutNote(savedDraft.note);
-    setTimerEndsAt(savedDraft.timerEndsAt);
+    setTimerEndsAt(restoredTimerEndsAt);
     setTimerLeft(
-      savedDraft.timerEndsAt
-        ? Math.max(0, Math.ceil((savedDraft.timerEndsAt - Date.now()) / 1000))
+      restoredTimerEndsAt
+        ? Math.max(0, Math.ceil((restoredTimerEndsAt - Date.now()) / 1000))
         : 0,
     );
-    setTimerLabel(savedDraft.timerEndsAt ? savedDraft.timerLabel : "");
+    setTimerLabel(restoredTimerEndsAt ? savedDraft.timerLabel : "");
     setSavedDraft(null);
     setView("workout");
-    setNotice("Workout restored");
-    window.setTimeout(() => setNotice(""), 2200);
+    setNotice(
+      restoredTiming.inactiveTimeRemoved
+        ? "Workout restored paused — inactive time was not added."
+        : "Workout restored",
+    );
+    window.setTimeout(() => setNotice(""), 3200);
   }
 
   function discardSavedWorkout() {
@@ -1145,6 +1184,22 @@ export default function Home() {
 
   function saveManualPlan() {
     persistManualPlan(dayExercises);
+  }
+
+  function removeDuplicateExercises(day: string) {
+    setDayExercises((current) => {
+      const seen = new Set<string>();
+      const exercises = (current[day] ?? []).filter((exercise) => {
+        const key = exercise.name.trim().toLowerCase();
+        if (!key) return true;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      return { ...current, [day]: exercises };
+    });
+    setNotice(`Duplicate exercises removed from ${day}. Review and save your plan.`);
+    window.setTimeout(() => setNotice(""), 3200);
   }
 
   function changeDayAssignment(day: string, assignment: DayAssignment) {
@@ -1662,14 +1717,47 @@ export default function Home() {
                 <span>Choose what you want to train on each day of the week.</span>
               </div>
               <button
+                aria-describedby={hasPlanDuplicates ? "plan-duplicate-summary" : undefined}
                 className="primaryAction planSaveAction"
-                disabled={saving}
+                disabled={saving || hasPlanDuplicates}
                 onClick={saveManualPlan}
                 type="button"
               >
                 {saving ? "Saving…" : "Save weekly plan"}
               </button>
             </div>
+
+            {hasPlanDuplicates && (
+              <div
+                className="planValidationBanner"
+                id="plan-duplicate-summary"
+                role="alert"
+              >
+                <span aria-hidden="true">!</span>
+                <div>
+                  <strong>Fix duplicate exercises before saving</strong>
+                  <p>
+                    Review {duplicatePlanDays.join(", ")} and keep each exercise once.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    const day = duplicatePlanDays[0];
+                    setExpandedDay(day);
+                    window.setTimeout(
+                      () =>
+                        document
+                          .getElementById(`plan-day-${day}`)
+                          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+                      0,
+                    );
+                  }}
+                  type="button"
+                >
+                  Review {duplicatePlanDays[0]}
+                </button>
+              </div>
+            )}
 
             <div className="planWorkspace">
               <section className="planBoard">
@@ -1696,7 +1784,11 @@ export default function Home() {
                       duplicateNames.map((name) => name.toLowerCase()),
                     );
                     return (
-                      <div className="dayPlanGroup" key={day}>
+                      <div
+                        className="dayPlanGroup"
+                        id={`plan-day-${day}`}
+                        key={day}
+                      >
                         <div className={isRest ? "dayPlanRow rest" : "dayPlanRow"}>
                           <span
                             className="dayPlanBadge"
@@ -1764,6 +1856,12 @@ export default function Home() {
                                 <span>
                                   Remove extra {duplicateNames.join(", ")} entries before saving.
                                 </span>
+                                <button
+                                  onClick={() => removeDuplicateExercises(day)}
+                                  type="button"
+                                >
+                                  Remove duplicates
+                                </button>
                               </div>
                             )}
                             {exercises.map((exercise, exerciseIndex) => {
