@@ -95,6 +95,7 @@ test("supports iPad Air and iPhone Pro Max safe responsive layouts", async () =>
   assert.match(styles, /\.mobileNav[\s\S]*?safe-area-inset-bottom/);
   assert.match(styles, /@media \(min-width: 901px\) and \(max-width: 1100px\)/);
   assert.match(styles, /\.appPage button,[\s\S]*?min-height: 44px/);
+  assert.match(styles, /\.appPage button,[\s\S]*?min-width: 44px/);
   assert.match(styles, /\.appPage:has\(\.planSaveAction\)[\s\S]*?padding-bottom/);
 });
 

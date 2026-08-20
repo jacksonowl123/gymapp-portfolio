@@ -4486,6 +4486,7 @@ button.previousSet:hover {
   .appPage button,
   .appHeader button {
     min-height: 44px;
+    min-width: 44px;
   }
 
   .appPage input:not([type="checkbox"]):not([type="range"]),
@@ -4506,6 +4507,11 @@ button.previousSet:hover {
   .appPage select,
   .appPage textarea {
     min-height: 44px;
+  }
+
+  .appPage button,
+  .appHeader button {
+    min-width: 44px;
   }
 }
 
