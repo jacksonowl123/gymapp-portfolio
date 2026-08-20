@@ -18,6 +18,11 @@ type TrainingType =
 type DayAssignment = TrainingType | "rest";
 type SetTechnique = "straight" | "superset" | "drop-set";
 
+type DropSetStage = {
+  weight: string;
+  reps: string;
+};
+
 type Profile = {
   goal: Goal;
   experience: Experience;
@@ -34,6 +39,7 @@ type Exercise = {
   weight?: string;
   rest?: string;
   technique?: SetTechnique;
+  dropSetStages?: DropSetStage[];
 };
 
 type LibraryExercise = Exercise & {
@@ -338,13 +344,33 @@ function coachExercises(type: TrainingType, equipment: Equipment) {
 
 function hydrateExercise(exercise: Exercise): Exercise {
   const [setPart, ...repParts] = exercise.sets.split("×");
+  const reps = exercise.reps ?? (repParts.join("×").trim() || "10");
+  const technique = exercise.technique ?? "straight";
+  const savedDropStages = Array.isArray(exercise.dropSetStages)
+    ? exercise.dropSetStages.slice(0, 4).map((stage) => ({
+        weight: String(stage?.weight ?? ""),
+        reps: String(stage?.reps ?? reps),
+      }))
+    : [];
+  const startingWeight = Number(exercise.weight);
+  const suggestedWeight = (factor: number) =>
+    Number.isFinite(startingWeight) && startingWeight > 0
+      ? String(Math.round(startingWeight * factor * 2) / 2)
+      : "";
   return {
     ...exercise,
     setCount: exercise.setCount ?? (setPart.trim() || "3"),
-    reps: exercise.reps ?? (repParts.join("×").trim() || "10"),
+    reps,
     weight: exercise.weight ?? "",
     rest: exercise.rest ?? "90 sec",
-    technique: exercise.technique ?? "straight",
+    technique,
+    dropSetStages:
+      technique === "drop-set" && savedDropStages.length === 0
+        ? [
+            { weight: suggestedWeight(0.8), reps },
+            { weight: suggestedWeight(0.6), reps },
+          ]
+        : savedDropStages,
   };
 }
 
@@ -375,24 +401,32 @@ function normalizeExerciseTechniques(exercises: Exercise[]) {
 function workoutTechniqueMeta(exercises: Exercise[], index: number) {
   const exercise = hydrateExercise(exercises[index]);
   if (isSupersetPartner(exercises, index)) {
+    const lead = hydrateExercise(exercises[index - 1]);
     return {
       kind: "superset",
       label: "SUPERSET · B",
-      detail: `Complete this after ${exercises[index - 1].name}, then take your planned rest.`,
+      detail: `After ${lead.name}, complete ${exercisePrescription(exercise)} at ${plannedLoadLabel(exercise)}, then take your planned rest.`,
     };
   }
   if (isSupersetLead(exercises, index)) {
+    const partner = hydrateExercise(exercises[index + 1]);
     return {
       kind: "superset",
       label: "SUPERSET · A",
-      detail: `Move straight to ${exercises[index + 1].name} without resting.`,
+      detail: `Complete ${exercisePrescription(exercise)} at ${plannedLoadLabel(exercise)}, then ${partner.name} — ${exercisePrescription(partner)} at ${plannedLoadLabel(partner)} — without resting.`,
     };
   }
   if (exercise.technique === "drop-set") {
+    const sequence = (exercise.dropSetStages ?? [])
+      .map(
+        (stage, stageIndex) =>
+          `Drop ${stageIndex + 1}: ${stage.weight || "set KG"} kg × ${stage.reps || "set reps"}`,
+      )
+      .join(" → ");
     return {
       kind: "drop-set",
-      label: "DROP SET",
-      detail: "Start at your planned KG, then reduce the load 20–30% and continue before resting.",
+      label: "DROP SET · FINAL SET",
+      detail: `Start at ${plannedLoadLabel(exercise)}, then ${sequence}. No rest between drops.`,
     };
   }
   return null;
@@ -415,6 +449,17 @@ function plannedWeight(exercise: Exercise) {
   return Number.isFinite(weight) && weight >= 0 && weight <= 2000
     ? weight
     : null;
+}
+
+function plannedLoadLabel(exercise: Exercise) {
+  const weight = plannedWeight(exercise);
+  if (weight === null) return "KG not set";
+  return weight === 0 ? "bodyweight" : `${weight} kg`;
+}
+
+function plannedDropStages(exercise: Exercise) {
+  const hydrated = hydrateExercise(exercise);
+  return hydrated.technique === "drop-set" ? hydrated.dropSetStages ?? [] : [];
 }
 
 function restToSeconds(rest = "90 sec") {
@@ -757,7 +802,8 @@ export default function Home() {
     recommendation.workouts[selectedWorkout] ?? recommendation.workouts[0];
   const completedSets = Object.values(completed).filter(Boolean).length;
   const totalPlannedSets = workout.exercises.reduce(
-    (sum, exercise) => sum + plannedSetCount(exercise),
+    (sum, exercise) =>
+      sum + plannedSetCount(exercise) + plannedDropStages(exercise).length,
     0,
   );
   const completedCount = workout.exercises.reduce((count, exercise, index) => {
@@ -773,7 +819,7 @@ export default function Home() {
       const weight = plannedWeight(exercise);
       if (weight === null) return sum;
       const baseKey = `${workout.day}-${workout.title}-${exerciseIndex}`;
-      return sum + Array.from(
+      const mainSetVolume = Array.from(
         { length: plannedSetCount(exercise) },
         (_, setIndex) => {
           const key = `${baseKey}-${setIndex + 1}`;
@@ -781,6 +827,20 @@ export default function Home() {
           return completed[key] && Number.isFinite(reps) ? weight * reps : 0;
         },
       ).reduce((setTotal, volume) => setTotal + volume, 0);
+      const dropVolume = plannedDropStages(exercise).reduce(
+        (dropTotal, stage, stageIndex) => {
+          const key = `${baseKey}-drop-${stageIndex + 1}`;
+          const stageWeight = Number(stage.weight);
+          const reps = Number(entries[key]?.reps);
+          return dropTotal + (
+            completed[key] && Number.isFinite(stageWeight) && Number.isFinite(reps)
+              ? stageWeight * reps
+              : 0
+          );
+        },
+        0,
+      );
+      return sum + mainSetVolume + dropVolume;
     }, 0),
   );
   const currentDurationMinutes = Math.max(1, Math.ceil(sessionElapsed / 60));
@@ -1511,6 +1571,32 @@ export default function Home() {
       window.setTimeout(() => setNotice(""), 3200);
       return false;
     }
+    const invalidDropSet = next.workouts.flatMap((item) =>
+      item.exercises.map((exercise) => ({ day: item.day, exercise })),
+    ).find(({ exercise }) => {
+      if (hydrateExercise(exercise).technique !== "drop-set") return false;
+      const startingWeight = plannedWeight(exercise);
+      const stages = plannedDropStages(exercise);
+      let previousWeight = startingWeight ?? 0;
+      return startingWeight === null || startingWeight <= 0 || stages.length === 0 ||
+        plannedSetCount(exercise) + stages.length > 20 || stages.some((stage) => {
+        const weight = Number(stage.weight);
+        const invalid =
+          !Number.isFinite(weight) ||
+          weight < 0 ||
+          weight >= previousWeight ||
+          !stage.reps.trim();
+        previousWeight = weight;
+        return invalid;
+      });
+    });
+    if (invalidDropSet) {
+      setNotice(
+        `Complete the drop sequence for ${invalidDropSet.exercise.name} in ${invalidDropSet.day}. Each drop must be lighter than the previous KG.`,
+      );
+      window.setTimeout(() => setNotice(""), 3600);
+      return false;
+    }
     const nextProfile = { ...profile, days: next.workouts.length };
     setProfile(nextProfile);
     setRecommendation(next);
@@ -1580,6 +1666,59 @@ export default function Home() {
           technique: "straight",
         };
       }
+      return { ...current, [day]: nextExercises };
+    });
+  }
+
+  function updateDropSetStage(
+    day: string,
+    exerciseIndex: number,
+    stageIndex: number,
+    field: keyof DropSetStage,
+    value: string,
+  ) {
+    setDayExercises((current) => {
+      const nextExercises = [...(current[day] ?? [])];
+      const exercise = hydrateExercise(nextExercises[exerciseIndex]);
+      const stages = [...(exercise.dropSetStages ?? [])];
+      stages[stageIndex] = { ...stages[stageIndex], [field]: value };
+      nextExercises[exerciseIndex] = { ...exercise, dropSetStages: stages };
+      return { ...current, [day]: nextExercises };
+    });
+  }
+
+  function addDropSetStage(day: string, exerciseIndex: number) {
+    setDayExercises((current) => {
+      const nextExercises = [...(current[day] ?? [])];
+      const exercise = hydrateExercise(nextExercises[exerciseIndex]);
+      const stages = [...(exercise.dropSetStages ?? [])];
+      if (stages.length >= 4) return current;
+      const previousWeight = Number(stages.at(-1)?.weight ?? exercise.weight);
+      const weight = Number.isFinite(previousWeight) && previousWeight > 0
+        ? String(Math.round(previousWeight * 0.8 * 2) / 2)
+        : "";
+      nextExercises[exerciseIndex] = {
+        ...exercise,
+        dropSetStages: [...stages, { weight, reps: exercise.reps ?? "10" }],
+      };
+      return { ...current, [day]: nextExercises };
+    });
+  }
+
+  function removeDropSetStage(
+    day: string,
+    exerciseIndex: number,
+    stageIndex: number,
+  ) {
+    setDayExercises((current) => {
+      const nextExercises = [...(current[day] ?? [])];
+      const exercise = hydrateExercise(nextExercises[exerciseIndex]);
+      const stages = exercise.dropSetStages ?? [];
+      if (stages.length <= 1) return current;
+      nextExercises[exerciseIndex] = {
+        ...exercise,
+        dropSetStages: stages.filter((_, index) => index !== stageIndex),
+      };
       return { ...current, [day]: nextExercises };
     });
   }
@@ -1692,7 +1831,7 @@ export default function Home() {
     const completedSetPayload = workout.exercises.flatMap(
       (exercise, exerciseIndex) => {
         const baseKey = `${workout.day}-${workout.title}-${exerciseIndex}`;
-        return Array.from(
+        const mainSets = Array.from(
           { length: plannedSetCount(exercise) },
           (_, setIndex) => {
             const setNumber = setIndex + 1;
@@ -1714,6 +1853,27 @@ export default function Home() {
             }];
           },
         ).flat();
+        const dropSets = plannedDropStages(exercise).flatMap(
+          (stage, stageIndex) => {
+            const key = `${baseKey}-drop-${stageIndex + 1}`;
+            const weight = Number(stage.weight);
+            const reps = Number(entries[key]?.reps);
+            if (
+              !completed[key] ||
+              !Number.isFinite(weight) ||
+              weight < 0 ||
+              !Number.isInteger(reps) ||
+              reps <= 0
+            ) return [];
+            return [{
+              exerciseName: exercise.name,
+              setNumber: plannedSetCount(exercise) + stageIndex + 1,
+              weight,
+              reps,
+            }];
+          },
+        );
+        return [...mainSets, ...dropSets];
       },
     );
     if (completedSetPayload.length !== completedSets) {
@@ -2337,6 +2497,9 @@ export default function Home() {
                                 exercises,
                                 exerciseIndex,
                               );
+                              const supersetPartnerExercise = supersetLead
+                                ? hydrateExercise(exercises[exerciseIndex + 1])
+                                : null;
                               return (
                                 <div
                                   className={[
@@ -2553,6 +2716,103 @@ export default function Home() {
                                       ×
                                     </button>
                                   </div>
+                                  {supersetPartnerExercise && (
+                                    <div className="techniqueDetails supersetDetails">
+                                      <div className="techniqueDetailsHead">
+                                        <strong>Superset order</strong>
+                                        <span>Repeat A → B, then rest</span>
+                                      </div>
+                                      <div className="supersetSequence">
+                                        <span>
+                                          <b>A</b>
+                                          <strong>{hydrated.name || "First exercise"}</strong>
+                                          <small>
+                                            {exercisePrescription(hydrated)} · {plannedLoadLabel(hydrated)}
+                                          </small>
+                                        </span>
+                                        <i>NO REST →</i>
+                                        <span>
+                                          <b>B</b>
+                                          <strong>{supersetPartnerExercise.name || "Next exercise"}</strong>
+                                          <small>
+                                            {exercisePrescription(supersetPartnerExercise)} · {plannedLoadLabel(supersetPartnerExercise)}
+                                          </small>
+                                        </span>
+                                      </div>
+                                    </div>
+                                  )}
+                                  {hydrated.technique === "drop-set" && (
+                                    <div className="techniqueDetails dropSetDetails">
+                                      <div className="techniqueDetailsHead">
+                                        <strong>Final-set drop sequence</strong>
+                                        <span>Start at {plannedLoadLabel(hydrated)}, then reduce without rest</span>
+                                      </div>
+                                      <div className="dropSetSequence">
+                                        {(hydrated.dropSetStages ?? []).map((stage, stageIndex) => (
+                                          <div className="dropStage" key={`${day}-${exerciseIndex}-drop-${stageIndex}`}>
+                                            <strong>DROP {stageIndex + 1}</strong>
+                                            <label>
+                                              <span>KG</span>
+                                              <input
+                                                aria-label={`Drop ${stageIndex + 1} weight for ${hydrated.name || `exercise ${exerciseIndex + 1}`}`}
+                                                inputMode="decimal"
+                                                min="0"
+                                                onChange={(event) =>
+                                                  updateDropSetStage(
+                                                    day,
+                                                    exerciseIndex,
+                                                    stageIndex,
+                                                    "weight",
+                                                    event.target.value,
+                                                  )
+                                                }
+                                                placeholder="kg"
+                                                step="0.5"
+                                                type="number"
+                                                value={stage.weight}
+                                              />
+                                            </label>
+                                            <label>
+                                              <span>REPS</span>
+                                              <input
+                                                aria-label={`Drop ${stageIndex + 1} target reps for ${hydrated.name || `exercise ${exerciseIndex + 1}`}`}
+                                                inputMode="numeric"
+                                                onChange={(event) =>
+                                                  updateDropSetStage(
+                                                    day,
+                                                    exerciseIndex,
+                                                    stageIndex,
+                                                    "reps",
+                                                    event.target.value,
+                                                  )
+                                                }
+                                                placeholder="reps"
+                                                value={stage.reps}
+                                              />
+                                            </label>
+                                            <button
+                                              aria-label={`Remove drop ${stageIndex + 1}`}
+                                              disabled={(hydrated.dropSetStages ?? []).length <= 1}
+                                              onClick={() =>
+                                                removeDropSetStage(day, exerciseIndex, stageIndex)
+                                              }
+                                              type="button"
+                                            >
+                                              ×
+                                            </button>
+                                          </div>
+                                        ))}
+                                        <button
+                                          className="addDropStage"
+                                          disabled={(hydrated.dropSetStages ?? []).length >= 4}
+                                          onClick={() => addDropSetStage(day, exerciseIndex)}
+                                          type="button"
+                                        >
+                                          + Add drop
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
@@ -2987,10 +3247,15 @@ export default function Home() {
                 <div className="exerciseRail" aria-label="Workout exercise progress">
                   {workout.exercises.map((exercise, index) => {
                     const baseKey = `${workout.day}-${workout.title}-${index}`;
-                    const done = Array.from(
+                    const done = [
+                      ...Array.from(
                       { length: plannedSetCount(exercise) },
                       (_, setIndex) => completed[`${baseKey}-${setIndex + 1}`],
-                    ).every(Boolean);
+                      ),
+                      ...plannedDropStages(exercise).map(
+                        (_, stageIndex) => completed[`${baseKey}-drop-${stageIndex + 1}`],
+                      ),
+                    ].every(Boolean);
                     return (
                       <button
                         aria-current={index === activeWorkoutExercise ? "step" : undefined}
@@ -3010,15 +3275,20 @@ export default function Home() {
                   const baseKey = `${workout.day}-${workout.title}-${index}`;
                   const previous = previousPerformance(exercise.name);
                   const targetWeight = plannedWeight(exercise);
+                  const dropStages = plannedDropStages(exercise);
                   const techniqueMeta = workoutTechniqueMeta(
                     workout.exercises,
                     index,
                   );
-                  const exerciseDone = Array.from(
-                    { length: plannedSetCount(exercise) },
-                    (_, setIndex) =>
-                      completed[`${baseKey}-${setIndex + 1}`],
-                  ).every(Boolean);
+                  const exerciseDone = [
+                    ...Array.from(
+                      { length: plannedSetCount(exercise) },
+                      (_, setIndex) => completed[`${baseKey}-${setIndex + 1}`],
+                    ),
+                    ...dropStages.map(
+                      (_, stageIndex) => completed[`${baseKey}-drop-${stageIndex + 1}`],
+                    ),
+                  ].every(Boolean);
                   return (
                     <div
                       className={exerciseDone ? "loggerExerciseBlock done" : "loggerExerciseBlock"}
@@ -3126,7 +3396,19 @@ export default function Home() {
                                         ...current,
                                         [key]: checked,
                                       }));
-                                      if (checked && isSupersetLead(workout.exercises, index)) {
+                                      if (
+                                        checked &&
+                                        dropStages.length > 0 &&
+                                        setNumber === plannedSetCount(exercise)
+                                      ) {
+                                        setTimerLeft(0);
+                                        setTimerEndsAt(null);
+                                        setTimerLabel("");
+                                        setNotice(
+                                          `Final set: continue with Drop 1 at ${dropStages[0].weight} kg without resting.`,
+                                        );
+                                        window.setTimeout(() => setNotice(""), 2800);
+                                      } else if (checked && isSupersetLead(workout.exercises, index)) {
                                         setTimerLeft(0);
                                         setTimerEndsAt(null);
                                         setTimerLabel("");
@@ -3151,6 +3433,77 @@ export default function Home() {
                           },
                         )}
                       </div>
+                      {dropStages.length > 0 && (
+                        <div className="dropSetLogger">
+                          <div className="dropSetLoggerTitle">
+                            <strong>Final-set drops</strong>
+                            <span>Continue without rest after your last working set</span>
+                          </div>
+                          {dropStages.map((stage, stageIndex) => {
+                            const key = `${baseKey}-drop-${stageIndex + 1}`;
+                            const isDone = Boolean(completed[key]);
+                            const entry = entries[key] ?? { reps: "" };
+                            return (
+                              <div
+                                className={isDone ? "dropSetLoggerRow done" : "dropSetLoggerRow"}
+                                key={key}
+                              >
+                                <span className="dropStageNumber">DROP {stageIndex + 1}</span>
+                                <span className="dropStageWeight">{stage.weight} kg</span>
+                                <label>
+                                  <span className="srOnly">
+                                    Reps for {exercise.name}, drop {stageIndex + 1}
+                                  </span>
+                                  <input
+                                    inputMode="numeric"
+                                    onChange={(event) =>
+                                      setEntries((current) => ({
+                                        ...current,
+                                        [key]: { ...entry, reps: event.target.value },
+                                      }))
+                                    }
+                                    placeholder={stage.reps}
+                                    value={entry.reps}
+                                  />
+                                </label>
+                                <label className="doneControl">
+                                  <input
+                                    checked={isDone}
+                                    onChange={(event) => {
+                                      const checked = event.target.checked;
+                                      const stageWeight = Number(stage.weight);
+                                      if (
+                                        checked &&
+                                        (!Number.isFinite(stageWeight) || stageWeight < 0)
+                                      ) {
+                                        setNotice(`Set Drop ${stageIndex + 1} KG in My Plan first.`);
+                                        window.setTimeout(() => setNotice(""), 2800);
+                                        return;
+                                      }
+                                      setCompleted((current) => ({
+                                        ...current,
+                                        [key]: checked,
+                                      }));
+                                      if (!checked) return;
+                                      const nextStage = dropStages[stageIndex + 1];
+                                      if (nextStage) {
+                                        setNotice(
+                                          `Continue with Drop ${stageIndex + 2} at ${nextStage.weight} kg — no rest.`,
+                                        );
+                                        window.setTimeout(() => setNotice(""), 2600);
+                                      } else {
+                                        startRestTimer(exercise);
+                                      }
+                                    }}
+                                    type="checkbox"
+                                  />
+                                  <span>{isDone ? "✓" : ""}</span>
+                                </label>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

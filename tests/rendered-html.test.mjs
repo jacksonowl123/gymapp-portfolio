@@ -61,10 +61,16 @@ test("supports supersets and drop sets in My Plan and workout logging", async ()
   assert.match(page, /type SetTechnique = "straight" \| "superset" \| "drop-set"/);
   assert.match(page, /Superset with next/);
   assert.match(page, /Drop set/);
+  assert.match(page, /dropSetStages/);
+  assert.match(page, /Final-set drop sequence/);
+  assert.match(page, /Superset order/);
+  assert.match(page, /Final-set drops/);
   assert.match(page, /workoutTechniqueMeta/);
   assert.match(page, /without resting/);
   assert.match(styles, /\.techniqueCue\.drop-set/);
   assert.match(styles, /\.exerciseEditRow\.supersetLead/);
+  assert.match(styles, /\.dropSetLoggerRow/);
+  assert.match(styles, /\.supersetSequence/);
 });
 
 test("persists workout notes in D1 with a migration", async () => {

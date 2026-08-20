@@ -1237,6 +1237,150 @@ input:focus-visible {
   font-size: 11px;
 }
 
+.techniqueDetails {
+  background: #f5f0ff;
+  border: 1px solid #ded0f7;
+  border-radius: 7px;
+  grid-column: 2 / -1;
+  padding: 10px 12px;
+}
+
+.techniqueDetails.dropSetDetails {
+  background: #fff4ed;
+  border-color: #f5d1bd;
+}
+
+.techniqueDetailsHead {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.techniqueDetailsHead strong {
+  color: #6842a6;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+
+.dropSetDetails .techniqueDetailsHead strong {
+  color: #b5531f;
+}
+
+.techniqueDetailsHead span {
+  color: #6d6e68;
+  font-size: 10px;
+}
+
+.supersetSequence {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.supersetSequence > span {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2d8f2;
+  border-radius: 6px;
+  display: grid;
+  gap: 2px 8px;
+  grid-template-columns: 24px 1fr;
+  padding: 8px;
+}
+
+.supersetSequence b {
+  align-items: center;
+  background: #805ad5;
+  border-radius: 50%;
+  color: #fff;
+  display: flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  grid-row: 1 / 3;
+  height: 22px;
+  justify-content: center;
+  width: 22px;
+}
+
+.supersetSequence strong {
+  font-size: 11px;
+}
+
+.supersetSequence small {
+  color: #74766e;
+  font-size: 10px;
+}
+
+.supersetSequence i {
+  color: #6842a6;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.dropSetSequence {
+  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dropStage {
+  align-items: end;
+  background: #fff;
+  border: 1px solid #f1d8c9;
+  border-radius: 6px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: auto 68px 68px 28px;
+  padding: 7px;
+}
+
+.dropStage > strong {
+  align-self: center;
+  color: #b5531f;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+}
+
+.dropStage label > span {
+  color: #77786f;
+  display: block;
+  font-size: 8px;
+  font-weight: 700;
+  margin-bottom: 3px;
+}
+
+.dropStage input {
+  height: 34px;
+  padding-inline: 7px;
+}
+
+.dropStage > button,
+.addDropStage {
+  background: transparent;
+  border: 1px solid #e5cbbb;
+  border-radius: 5px;
+  color: #a04c21;
+  cursor: pointer;
+  min-height: 34px;
+}
+
+.dropStage > button:disabled,
+.addDropStage:disabled {
+  cursor: default;
+  opacity: .4;
+}
+
+.addDropStage {
+  padding-inline: 10px;
+}
+
 .exerciseEditRow input:focus,
 .exerciseEditRow select:focus {
   border-color: var(--orange);
@@ -1843,6 +1987,72 @@ input:focus-visible {
   color: #65665f;
   font-size: 11px;
   line-height: 1.4;
+}
+
+.dropSetLogger {
+  background: #fff8f2;
+  border: 1px solid #f2d6c4;
+  border-radius: 7px;
+  margin-top: 10px;
+  padding: 10px;
+}
+
+.dropSetLoggerTitle {
+  align-items: baseline;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.dropSetLoggerTitle strong,
+.dropStageNumber {
+  color: #b5531f;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+}
+
+.dropSetLoggerTitle span {
+  color: #77786f;
+  font-size: 10px;
+}
+
+.dropSetLoggerRow {
+  align-items: center;
+  border-radius: 6px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 72px minmax(80px, 1fr) 90px 45px;
+  min-height: 52px;
+  padding: 6px;
+}
+
+.dropSetLoggerRow:nth-child(even) {
+  background: #fff;
+}
+
+.dropSetLoggerRow.done {
+  background: #eff5e8;
+}
+
+.dropStageWeight {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dropSetLoggerRow input:not([type="checkbox"]) {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 12px;
+  height: 44px;
+  min-width: 0;
+  padding: 0 9px;
+  width: 100%;
+}
+
+.dropSetLoggerRow input:focus {
+  border-color: var(--orange);
+  outline: 2px solid color-mix(in srgb, var(--orange) 20%, transparent);
 }
 
 .loggerExerciseTop {
@@ -3444,6 +3654,34 @@ button.previousSet:hover {
     grid-row: 4;
   }
 
+  .techniqueDetails {
+    grid-column: 1 / -1;
+  }
+
+  .techniqueDetailsHead,
+  .dropSetLoggerTitle {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .supersetSequence {
+    grid-template-columns: 1fr;
+  }
+
+  .supersetSequence i {
+    justify-self: center;
+  }
+
+  .dropStage {
+    grid-template-columns: minmax(55px, auto) 1fr 1fr 34px;
+    width: 100%;
+  }
+
+  .addDropStage {
+    width: 100%;
+  }
+
   .exerciseOrderActions {
     grid-column: 2 / -1;
     grid-row: 5;
@@ -3482,6 +3720,16 @@ button.previousSet:hover {
   .setLoggerRow {
     gap: 6px;
     grid-template-columns: 30px 58px minmax(70px, 1fr) 44px;
+  }
+
+  .dropSetLoggerRow {
+    gap: 6px;
+    grid-template-columns: 58px minmax(55px, 1fr) minmax(70px, 1fr) 44px;
+  }
+
+  .dropSetLoggerRow .doneControl span {
+    height: 44px;
+    width: 44px;
   }
 
   .setLoggerHead {
