@@ -1,98 +1,59 @@
-# vinext-starter
+# Liftly
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Liftly is a full-stack gym planner and lifting tracker. It lets people build a
+weekly plan, log each set, use a rest timer, review strength and body-weight
+progress, and generate an equipment-aware starting plan with AI Coach.
 
-## Prerequisites
+Live site: [liftly-gym.owljuan.chatgpt.site](https://liftly-gym.owljuan.chatgpt.site/)
 
-- Node.js `>=22.13.0`
+## Product features
 
-## Quick Start
+- seven-day training planner with editable exercises, sets, reps, KG and rest
+- drag-and-drop exercise ordering with duplicate-exercise protection
+- focused one-exercise-at-a-time workout logger and automatic rest timer
+- resumable workout drafts, previous-performance recall and personal records
+- progress ranges, volume, completion, estimated 1RM and body-weight tracking
+- AI Coach recommendations for full gym, dumbbells-only or bodyweight training
+- account-scoped D1 persistence with automatic migration from a device profile
+- retry-safe offline write queue and installable PWA shell
+
+## Technology
+
+- React 19, Next.js 16 and Vinext
+- Cloudflare Workers and D1
+- Drizzle schema and SQL migrations
+- OpenAI Sites hosting and account identity headers
+
+## Local development
+
+Requires Node.js `>=22.13.0`.
 
 ```bash
 npm install
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+Open `http://localhost:3000`.
 
-## Included Shape
+## Quality checks
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
-
-## Workspace Auth Headers
-
-OpenAI workspace sites can read the current user's email from
-`oai-authenticated-user-email`.
-
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
-
-Treat the full name as optional and fall back to email when it is absent:
-
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+npm run lint
+npm test
+npm run db:generate
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+`npm test` performs a production build and runs the Liftly source regression
+suite. Generate a new Drizzle migration whenever `db/schema.ts` changes.
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+## Data model
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+- `fitness_profiles`: the current weekly plan and coach inputs
+- `workout_logs`: session summary, note and retry-safe client identifier
+- `workout_sets`: completed sets with weight and reps
+- `body_weight_logs`: dated body-weight check-ins
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+Authenticated Sites requests are scoped with
+`oai-authenticated-user-id`. Anonymous local development falls back to a
+random device profile ID. Durable data is stored in D1; local storage is used
+only for workout drafts, an offline cache and the pending sync queue.

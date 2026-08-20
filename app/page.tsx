@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 type Goal = "Build muscle" | "Get stronger" | "Lose fat" | "Move better";
 type Experience = "Beginner" | "Intermediate" | "Advanced";
 type Equipment = "Full gym" | "Dumbbells only" | "Bodyweight";
-type View = "dashboard" | "plan" | "library" | "workout" | "progress";
+type View = "dashboard" | "plan" | "library" | "workout" | "progress" | "coach";
+type ProgressRange = "4w" | "12w" | "all";
 type TrainingType =
   | "upper"
   | "lower"
@@ -71,6 +72,27 @@ type WorkoutLog = {
   }>;
 };
 
+type BodyWeightLog = {
+  id: number;
+  weight: number;
+  recordedAt: string;
+};
+
+type AccountSync = {
+  signedIn: boolean;
+  displayName: string;
+};
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+type QueuedMutation = {
+  id: string;
+  payload: Record<string, unknown>;
+};
+
 type WorkoutDraft = {
   workoutDay: string;
   workoutTitle: string;
@@ -91,6 +113,7 @@ type CompletedWorkoutSummary = {
   volume: number;
   personalRecords: string[];
   note: string;
+  pendingSync?: boolean;
 };
 
 type RestAlerts = {
@@ -274,6 +297,38 @@ function toExercises(items: string[][]): Exercise[] {
   );
 }
 
+const limitedEquipmentLibraries: Partial<
+  Record<Equipment, Record<TrainingType, string[][]>>
+> = {
+  "Dumbbells only": {
+    upper: [["Dumbbell bench press", "3 × 8–10", "Chest"], ["One-arm dumbbell row", "3 × 10 / side", "Back"], ["Dumbbell shoulder press", "3 × 8–10", "Shoulders"], ["Dumbbell pullover", "3 × 10–12", "Back"], ["Hammer curl", "2 × 12", "Arms"]],
+    lower: [["Goblet squat", "4 × 8–10", "Quads"], ["Dumbbell Romanian deadlift", "3 × 8–10", "Hamstrings"], ["Reverse lunge", "3 × 10 / side", "Legs"], ["Dumbbell hip thrust", "3 × 12", "Glutes"], ["Dumbbell calf raise", "3 × 15", "Calves"]],
+    push: [["Dumbbell bench press", "4 × 8", "Chest"], ["Dumbbell shoulder press", "3 × 8–10", "Shoulders"], ["Incline dumbbell press", "3 × 10", "Chest"], ["Lateral raise", "3 × 12–15", "Shoulders"], ["Overhead triceps extension", "3 × 12", "Triceps"]],
+    pull: [["Dumbbell Romanian deadlift", "3 × 8", "Posterior chain"], ["Chest-supported dumbbell row", "4 × 8–10", "Back"], ["Dumbbell pullover", "3 × 10", "Lats"], ["Reverse fly", "3 × 15", "Rear delts"], ["Hammer curl", "3 × 12", "Biceps"]],
+    full: [["Goblet squat", "3 × 10", "Legs"], ["Dumbbell bench press", "3 × 8–10", "Chest"], ["One-arm dumbbell row", "3 × 10 / side", "Back"], ["Dumbbell Romanian deadlift", "3 × 10", "Hamstrings"], ["Dumbbell dead bug", "3 × 8 / side", "Core"]],
+    conditioning: [["Dumbbell swing", "4 × 12", "Power"], ["Dumbbell thruster", "3 × 10", "Full body"], ["Reverse lunge", "3 × 10 / side", "Legs"], ["Dumbbell high knees", "6 × 30 sec", "Cardio"], ["Farmer carry", "4 × 30 m", "Core"]],
+    mobility: [["90/90 hip switch", "3 × 8 / side", "Hips"], ["World’s greatest stretch", "2 × 6 / side", "Full body"], ["Tempo goblet squat", "3 × 8", "Legs"], ["Half-kneeling dumbbell press", "3 × 10", "Shoulders"], ["Suitcase carry", "3 × 30 m", "Core"]],
+  },
+  Bodyweight: {
+    upper: [["Push-up", "3 × 8–15", "Chest"], ["Prone Y-T-W", "3 × 8", "Back"], ["Pike push-up", "3 × 6–10", "Shoulders"], ["Reverse snow angel", "3 × 12", "Back"], ["Close-grip push-up", "2 × 8–12", "Arms"]],
+    lower: [["Tempo bodyweight squat", "4 × 12", "Quads"], ["Single-leg hip hinge", "3 × 10 / side", "Hamstrings"], ["Reverse lunge", "3 × 10 / side", "Legs"], ["Glute bridge", "3 × 15", "Glutes"], ["Single-leg calf raise", "3 × 15", "Calves"]],
+    push: [["Push-up", "4 × 8–15", "Chest"], ["Pike push-up", "3 × 6–10", "Shoulders"], ["Tempo push-up", "3 × 8", "Chest"], ["Plank shoulder tap", "3 × 12 / side", "Shoulders"], ["Close-grip push-up", "3 × 8–12", "Triceps"]],
+    pull: [["Single-leg hip hinge", "3 × 10 / side", "Posterior chain"], ["Prone Y-T-W", "4 × 8", "Back"], ["Superman pull", "3 × 12", "Lats"], ["Reverse snow angel", "3 × 15", "Rear delts"], ["Reverse plank", "3 × 30 sec", "Arms"]],
+    full: [["Tempo bodyweight squat", "3 × 12", "Legs"], ["Push-up", "3 × 8–15", "Chest"], ["Superman pull", "3 × 12", "Back"], ["Single-leg hip hinge", "3 × 10 / side", "Hamstrings"], ["Dead bug", "3 × 8 / side", "Core"]],
+    conditioning: [["Squat jump", "4 × 8", "Power"], ["Push-up", "3 × 8–12", "Upper body"], ["Reverse lunge", "3 × 10 / side", "Legs"], ["Mountain climber", "8 × 30 sec", "Cardio"], ["Bear crawl", "4 × 30 sec", "Core"]],
+    mobility: [["90/90 hip switch", "3 × 8 / side", "Hips"], ["World’s greatest stretch", "2 × 6 / side", "Full body"], ["Tempo bodyweight squat", "3 × 10", "Legs"], ["Scapular push-up", "3 × 10", "Shoulders"], ["Side plank", "3 × 30 sec", "Core"]],
+  },
+};
+
+function coachExercises(type: TrainingType, equipment: Equipment) {
+  const exercises = toExercises(
+    limitedEquipmentLibraries[equipment]?.[type] ?? exerciseLibrary[type],
+  );
+  return equipment === "Bodyweight"
+    ? exercises.map((exercise) => ({ ...exercise, weight: "0" }))
+    : exercises;
+}
+
 function hydrateExercise(exercise: Exercise): Exercise {
   const [setPart, ...repParts] = exercise.sets.split("×");
   return {
@@ -451,7 +506,7 @@ function buildRecommendation(profile: Profile): Recommendation {
       day: days[index],
       title: titles[type][Math.min(useIndex, 1)],
       duration: beginner ? 45 : type === "conditioning" ? 38 : 55,
-      exercises: toExercises(exerciseLibrary[type]),
+      exercises: coachExercises(type, profile.equipment),
       accent: accents[index],
       type,
     };
@@ -586,7 +641,14 @@ export default function Home() {
     Record<string, { reps: string }>
   >({});
   const [logs, setLogs] = useState<WorkoutLog[]>([]);
+  const [bodyWeights, setBodyWeights] = useState<BodyWeightLog[]>([]);
+  const [bodyWeightInput, setBodyWeightInput] = useState("");
+  const [account, setAccount] = useState<AccountSync>({
+    signedIn: false,
+    displayName: "Device profile",
+  });
   const [progressExercise, setProgressExercise] = useState("");
+  const [progressRange, setProgressRange] = useState<ProgressRange>("12w");
   const [librarySearch, setLibrarySearch] = useState("");
   const [libraryMuscle, setLibraryMuscle] = useState("All");
   const [libraryEquipment, setLibraryEquipment] = useState("All");
@@ -601,6 +663,16 @@ export default function Home() {
   const [savedDraft, setSavedDraft] = useState<WorkoutDraft | null>(null);
   const [finishReview, setFinishReview] = useState(false);
   const [pendingReset, setPendingReset] = useState(false);
+  const [activeWorkoutExercise, setActiveWorkoutExercise] = useState(0);
+  const [workoutChooserOpen, setWorkoutChooserOpen] = useState(false);
+  const [coachProfile, setCoachProfile] = useState<Profile>(defaultProfile);
+  const [pendingCoachPlan, setPendingCoachPlan] = useState(false);
+  const [installPrompt, setInstallPrompt] =
+    useState<BeforeInstallPromptEvent | null>(null);
+  const [isOnline, setIsOnline] = useState(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  const [queuedChanges, setQueuedChanges] = useState(0);
   const [completedWorkoutSummary, setCompletedWorkoutSummary] =
     useState<CompletedWorkoutSummary | null>(null);
   const [restAlerts, setRestAlerts] = useState<RestAlerts>({
@@ -668,7 +740,18 @@ export default function Home() {
   const weeklyPercent = weeklyTarget
     ? Math.round((weeklyDone / weeklyTarget) * 100)
     : 0;
-  const totalMinutes = logs.reduce((sum, log) => sum + log.duration, 0);
+  const progressCutoff = useMemo(() => {
+    if (progressRange === "all") return null;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - (progressRange === "4w" ? 28 : 84));
+    return cutoff;
+  }, [progressRange]);
+  const progressLogs = useMemo(
+    () => logs.filter((log) =>
+      !progressCutoff || parseWorkoutDate(log.performedAt) >= progressCutoff,
+    ),
+    [logs, progressCutoff],
+  );
   const loggedSets = logs.flatMap((log) => log.sets ?? []);
   const totalVolume = Math.round(
     loggedSets.reduce((sum, set) => sum + set.weight * set.reps, 0),
@@ -677,11 +760,23 @@ export default function Home() {
     (heaviest, set) => Math.max(heaviest, set.weight),
     0,
   );
+  const rangeSets = progressLogs.flatMap((log) => log.sets ?? []);
+  const rangeVolume = Math.round(
+    rangeSets.reduce((sum, set) => sum + set.weight * set.reps, 0),
+  );
+  const estimatedOneRepMax = Math.round(rangeSets.reduce(
+    (best, set) => Math.max(best, set.weight * (1 + set.reps / 30)),
+    0,
+  ));
+  const rangeCompleted = progressLogs.filter(
+    (log) => workoutCompletionStatus(log) === "Completed",
+  ).length;
+  const rangePartial = progressLogs.length - rangeCompleted;
   const exerciseNames = Array.from(
     new Set(loggedSets.map((set) => set.exerciseName)),
   ).sort();
   const activeProgressExercise = progressExercise || exerciseNames[0] || "";
-  const exerciseProgress = logs
+  const exerciseProgress = progressLogs
     .slice()
     .reverse()
     .flatMap((log) => {
@@ -700,6 +795,28 @@ export default function Home() {
     1,
     ...exerciseProgress.map((point) => point.weight),
   );
+  const bodyWeightProgress = bodyWeights
+    .filter((entry) =>
+      !progressCutoff || parseWorkoutDate(entry.recordedAt) >= progressCutoff,
+    )
+    .slice()
+    .reverse();
+  const bodyWeightMin = bodyWeightProgress.length
+    ? Math.min(...bodyWeightProgress.map((entry) => entry.weight))
+    : 0;
+  const bodyWeightMax = bodyWeightProgress.length
+    ? Math.max(...bodyWeightProgress.map((entry) => entry.weight))
+    : 1;
+  const coachRecommendation = useMemo(
+    () => buildRecommendation(coachProfile),
+    [coachProfile],
+  );
+  const accountInitials = account.displayName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "LP";
   const activePlanDays = dayLabels.filter(
     (day) => (weekSchedule[day] ?? "rest") !== "rest",
   );
@@ -745,9 +862,16 @@ export default function Home() {
             ...(JSON.parse(storedAlerts) as Partial<RestAlerts>),
           }));
         }
+        const cachedTraining = window.localStorage.getItem(
+          `liftly-fitness-cache-${id}`,
+        );
+        if (cachedTraining) applyFitnessData(JSON.parse(cachedTraining));
       } catch {
         window.localStorage.removeItem(`liftly-workout-draft-${id}`);
+        window.localStorage.removeItem(`liftly-fitness-cache-${id}`);
       }
+
+      setQueuedChanges(readMutationQueue(id).length);
 
       fetch(`/api/fitness?profileId=${encodeURIComponent(id)}`)
         .then(async (response) => {
@@ -755,29 +879,52 @@ export default function Home() {
           return response.json();
         })
         .then((data) => {
-          if (data.profile?.planJson) {
-            const savedProfile: Profile = {
-              goal: data.profile.goal,
-              experience: data.profile.experience,
-              days: data.profile.days,
-              equipment: data.profile.equipment,
-            };
-            setProfile(savedProfile);
-            const savedPlan = JSON.parse(data.profile.planJson) as Recommendation;
-            setRecommendation(savedPlan);
-            setWeekSchedule(scheduleFromWorkouts(savedPlan.workouts));
-            setDayExercises(exercisesFromWorkouts(savedPlan.workouts));
-          }
-          if (Array.isArray(data.logs)) setLogs(data.logs);
+          window.localStorage.setItem(
+            `liftly-fitness-cache-${id}`,
+            JSON.stringify(data),
+          );
+          applyFitnessData(data);
           if (draftToRestore) setSavedDraft(draftToRestore);
+          void flushMutationQueue(id);
         })
         .catch(() => {
           if (draftToRestore) setSavedDraft(draftToRestore);
-          setNotice("Working offline — changes may not be saved.");
+          setNotice("Working offline — new changes will sync automatically.");
         });
     }, 0);
     return () => window.clearTimeout(initialization);
+    // Initialization intentionally runs once for this browser profile.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      if (profileId) void flushMutationQueue(profileId);
+    };
+    const handleOffline = () => setIsOnline(false);
+    const handleInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as BeforeInstallPromptEvent);
+    };
+    const handleInstalled = () => setInstallPrompt(null);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    window.addEventListener("beforeinstallprompt", handleInstallPrompt);
+    window.addEventListener("appinstalled", handleInstalled);
+    if ("serviceWorker" in navigator) {
+      void navigator.serviceWorker.register("/sw.js");
+    }
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
+      window.removeEventListener("appinstalled", handleInstalled);
+    };
+    // Rebind only when the local profile used by the sync queue changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileId]);
 
   useEffect(() => {
     if (!sessionStarted || sessionPaused || view !== "workout") return;
@@ -924,6 +1071,129 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [view]);
 
+  function applyFitnessData(value: unknown) {
+    const data = value as {
+      account?: AccountSync;
+      profile?: {
+        goal: Goal;
+        experience: Experience;
+        days: number;
+        equipment: Equipment;
+        planJson?: string;
+      };
+      logs?: WorkoutLog[];
+      bodyWeights?: BodyWeightLog[];
+    };
+    if (data.account) setAccount(data.account);
+    if (data.profile?.planJson) {
+      const savedProfile: Profile = {
+        goal: data.profile.goal,
+        experience: data.profile.experience,
+        days: data.profile.days,
+        equipment: data.profile.equipment,
+      };
+      const savedPlan = JSON.parse(data.profile.planJson) as Recommendation;
+      setProfile(savedProfile);
+      setCoachProfile(savedProfile);
+      setRecommendation(savedPlan);
+      setWeekSchedule(scheduleFromWorkouts(savedPlan.workouts));
+      setDayExercises(exercisesFromWorkouts(savedPlan.workouts));
+    }
+    if (Array.isArray(data.logs)) setLogs(data.logs);
+    if (Array.isArray(data.bodyWeights)) setBodyWeights(data.bodyWeights);
+  }
+
+  function mutationQueueKey(id: string) {
+    return `liftly-sync-queue-${id}`;
+  }
+
+  function cacheTrainingState(
+    id: string,
+    nextProfile: Profile,
+    nextPlan: Recommendation,
+    nextLogs: WorkoutLog[],
+    nextBodyWeights: BodyWeightLog[],
+  ) {
+    window.localStorage.setItem(`liftly-fitness-cache-${id}`, JSON.stringify({
+      account,
+      profile: {
+        ...nextProfile,
+        planJson: JSON.stringify(nextPlan),
+      },
+      logs: nextLogs,
+      bodyWeights: nextBodyWeights,
+    }));
+  }
+
+  function readMutationQueue(id: string): QueuedMutation[] {
+    try {
+      const stored = window.localStorage.getItem(mutationQueueKey(id));
+      return stored ? JSON.parse(stored) as QueuedMutation[] : [];
+    } catch {
+      window.localStorage.removeItem(mutationQueueKey(id));
+      return [];
+    }
+  }
+
+  function writeMutationQueue(id: string, queue: QueuedMutation[]) {
+    window.localStorage.setItem(mutationQueueKey(id), JSON.stringify(queue));
+    setQueuedChanges(queue.length);
+  }
+
+  function queueMutation(payload: Record<string, unknown>) {
+    if (!profileId) return;
+    const queue = readMutationQueue(profileId);
+    queue.push({ id: crypto.randomUUID(), payload });
+    writeMutationQueue(profileId, queue);
+  }
+
+  async function sendFitnessMutation(payload: Record<string, unknown>) {
+    const response = await fetch("/api/fitness", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null) as { error?: string } | null;
+      throw new Error(data?.error || "Sync failed");
+    }
+    return response.json();
+  }
+
+  async function loadFitnessData(id: string) {
+    const response = await fetch(`/api/fitness?profileId=${encodeURIComponent(id)}`);
+    if (!response.ok) throw new Error("Could not refresh training data");
+    applyFitnessData(await response.json());
+  }
+
+  async function flushMutationQueue(id: string) {
+    if (!navigator.onLine) return;
+    const queue = readMutationQueue(id);
+    if (!queue.length) return;
+    const remaining = [...queue];
+    while (remaining.length) {
+      try {
+        await sendFitnessMutation(remaining[0].payload);
+        remaining.shift();
+        writeMutationQueue(id, remaining);
+      } catch {
+        break;
+      }
+    }
+    if (!remaining.length) {
+      await loadFitnessData(id).catch(() => undefined);
+      setNotice("Offline changes synced");
+      window.setTimeout(() => setNotice(""), 2400);
+    }
+  }
+
+  async function installLiftly() {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  }
+
   function clearStoredWorkoutDraft() {
     if (profileId) {
       window.localStorage.removeItem(`liftly-workout-draft-${profileId}`);
@@ -938,6 +1208,8 @@ export default function Home() {
     }
     clearStoredWorkoutDraft();
     setSelectedWorkout(index);
+    setActiveWorkoutExercise(0);
+    setWorkoutChooserOpen(false);
     setCompleted({});
     setEntries({});
     setTimerLeft(0);
@@ -972,6 +1244,8 @@ export default function Home() {
         ? savedDraft.timerEndsAt
         : null;
     setSelectedWorkout(workoutIndex);
+    setActiveWorkoutExercise(0);
+    setWorkoutChooserOpen(false);
     setEntries(savedDraft.entries);
     setCompleted(savedDraft.completed);
     setSessionElapsed(restoredTiming.elapsedSeconds);
@@ -1054,12 +1328,15 @@ export default function Home() {
   async function toggleRestAlert(setting: keyof RestAlerts) {
     let nextValue = !restAlerts[setting];
     if (setting === "notification" && nextValue) {
-      if (!("Notification" in window)) {
+      const NotificationClass = (window as Window & {
+        Notification?: typeof Notification;
+      }).Notification;
+      if (!NotificationClass) {
         setNotice("Browser notifications are not supported on this device.");
         window.setTimeout(() => setNotice(""), 2800);
         return;
       }
-      const permission = await Notification.requestPermission();
+      const permission = await NotificationClass.requestPermission();
       nextValue = permission === "granted";
       if (!nextValue) {
         setNotice("Notification permission was not enabled.");
@@ -1103,22 +1380,20 @@ export default function Home() {
     successMessage = "Plan saved",
   ) {
     if (!profileId) return;
+    const payload = {
+      action: "save-plan",
+      profileId,
+      profile: nextProfile,
+      plan: next,
+    };
+    cacheTrainingState(profileId, nextProfile, next, logs, bodyWeights);
     setSaving(true);
     try {
-      const response = await fetch("/api/fitness", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          action: "save-plan",
-          profileId,
-          profile: nextProfile,
-          plan: next,
-        }),
-      });
-      if (!response.ok) throw new Error("Save failed");
+      await sendFitnessMutation(payload);
       setNotice(successMessage);
     } catch {
-      setNotice("Could not save the plan. Please try again.");
+      queueMutation(payload);
+      setNotice("Plan saved on this device — it will sync when online.");
     } finally {
       setSaving(false);
       window.setTimeout(() => setNotice(""), 2600);
@@ -1365,32 +1640,34 @@ export default function Home() {
       window.setTimeout(() => setNotice(""), 2800);
       return;
     }
-    setSaving(true);
-    try {
-      const response = await fetch("/api/fitness", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          action: "log-workout",
-          profileId,
-          workoutName: workout.title,
-          duration: currentDurationMinutes,
-          exercisesCompleted: completedCount,
-          totalExercises: workout.exercises.length,
-          note: workoutNote,
-          sets: completedSetPayload,
-        }),
-      });
-      if (!response.ok) throw new Error("Log failed");
-      const data = await response.json();
-      setLogs((current) => [data.log, ...current].slice(0, 20));
+    const clientId = crypto.randomUUID();
+    const payload = {
+      action: "log-workout",
+      clientId,
+      profileId,
+      workoutName: workout.title,
+      duration: currentDurationMinutes,
+      exercisesCompleted: completedCount,
+      totalExercises: workout.exercises.length,
+      note: workoutNote,
+      sets: completedSetPayload,
+    };
+    const finishSavedWorkout = (
+      log: WorkoutLog,
+      personalRecords: string[],
+      pendingSync = false,
+    ) => {
+      const nextLogs = [log, ...logs].slice(0, 100);
+      setLogs(nextLogs);
+      cacheTrainingState(profileId, profile, recommendation, nextLogs, bodyWeights);
       setCompletedWorkoutSummary({
         workoutName: workout.title,
         duration: currentDurationMinutes,
         completedSets,
         volume: currentWorkoutVolume,
-        personalRecords: data.personalRecords ?? [],
+        personalRecords,
         note: workoutNote.trim(),
+        pendingSync,
       });
       clearStoredWorkoutDraft();
       setCompleted({});
@@ -1403,13 +1680,87 @@ export default function Home() {
       setSessionStarted(false);
       setWorkoutNote("");
       setFinishReview(false);
+      setActiveWorkoutExercise(0);
       setView("progress");
+    };
+    setSaving(true);
+    try {
+      const data = await sendFitnessMutation(payload) as {
+        log: WorkoutLog;
+        personalRecords?: string[];
+      };
+      finishSavedWorkout(data.log, data.personalRecords ?? []);
     } catch {
-      setNotice("Could not save this workout. Please try again.");
+      queueMutation(payload);
+      finishSavedWorkout({
+        id: -Date.now(),
+        workoutName: workout.title,
+        duration: currentDurationMinutes,
+        exercisesCompleted: completedCount,
+        totalExercises: workout.exercises.length,
+        note: workoutNote,
+        performedAt: new Date().toISOString(),
+        sets: completedSetPayload,
+      }, [], true);
     } finally {
       setSaving(false);
       window.setTimeout(() => setNotice(""), 2800);
     }
+  }
+
+  async function logBodyWeight() {
+    if (!profileId) return;
+    const weight = Number(bodyWeightInput);
+    if (!Number.isFinite(weight) || weight < 25 || weight > 400) {
+      setNotice("Enter a body weight between 25 and 400 kg.");
+      window.setTimeout(() => setNotice(""), 2600);
+      return;
+    }
+    const payload = {
+      action: "log-bodyweight",
+      clientId: crypto.randomUUID(),
+      profileId,
+      weight,
+    };
+    setSaving(true);
+    try {
+      const data = await sendFitnessMutation(payload) as {
+        bodyWeight: BodyWeightLog;
+      };
+      const nextBodyWeights = [data.bodyWeight, ...bodyWeights].slice(0, 100);
+      setBodyWeights(nextBodyWeights);
+      cacheTrainingState(profileId, profile, recommendation, logs, nextBodyWeights);
+      setNotice("Body weight saved");
+    } catch {
+      queueMutation(payload);
+      const nextBodyWeights = [{
+        id: -Date.now(),
+        weight,
+        recordedAt: new Date().toISOString(),
+      }, ...bodyWeights].slice(0, 100);
+      setBodyWeights(nextBodyWeights);
+      cacheTrainingState(profileId, profile, recommendation, logs, nextBodyWeights);
+      setNotice("Body weight saved on this device — sync is queued.");
+    } finally {
+      setBodyWeightInput("");
+      setSaving(false);
+      window.setTimeout(() => setNotice(""), 2800);
+    }
+  }
+
+  function useCoachPlan() {
+    const nextProfile = { ...coachProfile, days: coachRecommendation.workouts.length };
+    setProfile(nextProfile);
+    setRecommendation(coachRecommendation);
+    setWeekSchedule(scheduleFromWorkouts(coachRecommendation.workouts));
+    setDayExercises(exercisesFromWorkouts(coachRecommendation.workouts));
+    setSelectedWorkout(0);
+    setActiveWorkoutExercise(0);
+    setCompleted({});
+    setEntries({});
+    setPendingCoachPlan(false);
+    setView("plan");
+    void savePlan(coachRecommendation, nextProfile, "Coach plan added to My Plan");
   }
 
   const navItems: Array<{ id: View; label: string; icon: string }> = [
@@ -1418,6 +1769,7 @@ export default function Home() {
     { id: "library", label: "Exercises", icon: "≡" },
     { id: "workout", label: "Log workout", icon: "+" },
     { id: "progress", label: "Progress", icon: "◔" },
+    { id: "coach", label: "AI Coach", icon: "✦" },
   ];
 
   return (
@@ -1464,13 +1816,16 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="userCard">
-          <span className="avatar">JL</span>
+        <a
+          className="userCard"
+          href={account.signedIn ? undefined : "/signin-with-chatgpt?return_to=%2F"}
+        >
+          <span className="avatar">{accountInitials}</span>
           <span>
-            <strong>My training</strong>
-            <small>Personal lift tracker</small>
+            <strong>{account.displayName}</strong>
+            <small>{account.signedIn ? "Account sync active" : "Sign in to sync devices"}</small>
           </span>
-        </div>
+        </a>
       </aside>
 
       <section className="appMain">
@@ -1482,6 +1837,15 @@ export default function Home() {
             <p>{today}</p>
           </div>
           <div className="headerActions">
+            {installPrompt && (
+              <button
+                className="installAction"
+                onClick={() => void installLiftly()}
+                type="button"
+              >
+                Install app
+              </button>
+            )}
             <button
               className="primaryAction"
               onClick={() => openWorkout()}
@@ -1491,6 +1855,16 @@ export default function Home() {
             </button>
           </div>
         </header>
+
+        {(!isOnline || queuedChanges > 0) && (
+          <div className="syncBanner" role="status">
+            <span aria-hidden="true">{isOnline ? "↻" : "◌"}</span>
+            <strong>{isOnline ? "Syncing your changes" : "You are offline"}</strong>
+            <small>
+              {queuedChanges} {queuedChanges === 1 ? "change" : "changes"} saved on this device
+            </small>
+          </div>
+        )}
 
         {view === "dashboard" && (
           <div className="appPage">
@@ -2073,22 +2447,22 @@ export default function Home() {
 
               <aside className="planSide">
                 <section className="aiFutureCard">
-                  <span className="futureBadge">FUTURE FEATURE</span>
+                  <span className="futureBadge">SMART PLAN BUILDER</span>
                   <div>
                     <p className="eyebrow">AI COACH</p>
-                    <h2>Recommended plans</h2>
+                    <h2>Want a starting plan?</h2>
                     <p>
-                      Later, AI can use your goal, experience and available
-                      equipment to suggest a weekly plan. For now, your schedule
-                      stays completely in your control.
+                      Tell Liftly your goal, experience, schedule and equipment.
+                      You will get a complete recommendation to review before it
+                      changes My Plan.
                     </p>
                   </div>
                 <button
                   className="futureAction"
-                  disabled
+                  onClick={() => setView("coach")}
                   type="button"
                 >
-                  AI coach coming later
+                  Build a recommended plan →
                 </button>
                 </section>
                 <section className="planTipCard">
@@ -2269,6 +2643,137 @@ export default function Home() {
           </div>
         )}
 
+        {view === "coach" && (
+          <div className="appPage coachPage">
+            <div className="pageTitle">
+              <div>
+                <p className="eyebrow">AI COACH</p>
+                <h1>Build a plan that fits your week</h1>
+                <span>
+                  Choose your training needs, review the recommendation, then
+                  decide whether to use it.
+                </span>
+              </div>
+              <button
+                className="secondaryAction"
+                onClick={() => setView("plan")}
+                type="button"
+              >
+                Back to My Plan
+              </button>
+            </div>
+
+            <div className="coachGrid">
+              <section className="coachFormPanel">
+                <div className="panelTitle">
+                  <div>
+                    <p className="eyebrow">YOUR INPUTS</p>
+                    <h2>What should the plan work around?</h2>
+                  </div>
+                </div>
+                <label>
+                  <span>Primary goal</span>
+                  <select
+                    onChange={(event) => setCoachProfile((current) => ({
+                      ...current,
+                      goal: event.target.value as Goal,
+                    }))}
+                    value={coachProfile.goal}
+                  >
+                    {(["Build muscle", "Get stronger", "Lose fat", "Move better"] as Goal[])
+                      .map((goal) => <option key={goal}>{goal}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Experience level</span>
+                  <select
+                    onChange={(event) => setCoachProfile((current) => ({
+                      ...current,
+                      experience: event.target.value as Experience,
+                    }))}
+                    value={coachProfile.experience}
+                  >
+                    {(["Beginner", "Intermediate", "Advanced"] as Experience[])
+                      .map((level) => <option key={level}>{level}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>Available equipment</span>
+                  <select
+                    onChange={(event) => setCoachProfile((current) => ({
+                      ...current,
+                      equipment: event.target.value as Equipment,
+                    }))}
+                    value={coachProfile.equipment}
+                  >
+                    {(["Full gym", "Dumbbells only", "Bodyweight"] as Equipment[])
+                      .map((equipment) => <option key={equipment}>{equipment}</option>)}
+                  </select>
+                </label>
+                <label className="coachDaysField">
+                  <span>Training days each week</span>
+                  <strong>{coachProfile.days} days</strong>
+                  <input
+                    aria-label="Training days each week"
+                    max="5"
+                    min="2"
+                    onChange={(event) => setCoachProfile((current) => ({
+                      ...current,
+                      days: Number(event.target.value),
+                    }))}
+                    type="range"
+                    value={coachProfile.days}
+                  />
+                  <small>2 days</small><small>5 days</small>
+                </label>
+                <div className="coachHistoryNote">
+                  <span aria-hidden="true">◔</span>
+                  <p>
+                    <strong>{logs.length ? `${logs.length} past workouts considered` : "Ready for your first plan"}</strong>
+                    {logs.length
+                      ? "Liftly keeps your recent consistency visible while you choose a realistic schedule."
+                      : "You can fine-tune every exercise, set, rep, KG and rest time after applying it."}
+                  </p>
+                </div>
+              </section>
+
+              <section className="coachPreviewPanel">
+                <div className="coachPlanHero">
+                  <span>RECOMMENDED FOR YOU</span>
+                  <h2>{coachRecommendation.name}</h2>
+                  <p>{coachRecommendation.summary}</p>
+                  <small>{coachRecommendation.reason}</small>
+                </div>
+                <div className="coachWorkoutList">
+                  {coachRecommendation.workouts.map((item) => (
+                    <article key={`${item.day}-${item.title}`}>
+                      <span style={{ "--accent": item.accent } as React.CSSProperties}>
+                        {item.day}
+                      </span>
+                      <div>
+                        <strong>{item.title}</strong>
+                        <small>{item.duration} min · {item.exercises.length} exercises</small>
+                        <p>{item.exercises.map((exercise) => exercise.name).join(" · ")}</p>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+                <button
+                  className="primaryAction coachUsePlan"
+                  onClick={() => setPendingCoachPlan(true)}
+                  type="button"
+                >
+                  Use this recommended plan
+                </button>
+                <p className="coachControlNote">
+                  Nothing changes until you confirm. Afterward, the plan stays
+                  fully editable in My Plan.
+                </p>
+              </section>
+            </div>
+          </div>
+        )}
+
         {view === "workout" && (
           <div className="appPage workoutPage">
             <div className="pageTitle workoutTitle">
@@ -2304,53 +2809,78 @@ export default function Home() {
               </div>
             </div>
 
-            <section className="workoutChooser">
+            <section className="workoutChooser compact">
               <div className="workoutChooserHeader">
                 <div>
-                  <p className="eyebrow">CHOOSE YOUR SESSION</p>
-                  <h2>Which workout are you doing?</h2>
+                  <p className="eyebrow">CURRENT SESSION</p>
+                  <h2>{workout.day} · {workout.title}</h2>
                 </div>
-                <button onClick={() => setView("plan")} type="button">
-                  Edit exercises in My Plan
-                </button>
-              </div>
-              <div className="workoutChoiceList">
-                {recommendation.workouts.map((item, index) => (
+                <div className="workoutChooserActions">
                   <button
-                    aria-pressed={index === selectedWorkout}
-                    className={index === selectedWorkout ? "active" : ""}
-                    key={`${item.day}-${item.title}`}
-                    onClick={() => selectWorkout(index)}
+                    onClick={() => setWorkoutChooserOpen((current) => !current)}
                     type="button"
                   >
-                    <span
-                      className="workoutChoiceDay"
-                      style={{ "--accent": item.accent } as React.CSSProperties}
-                    >
-                      {item.day}
-                    </span>
-                    <span>
-                      <strong>{item.title}</strong>
-                      <small>
-                        {item.exercises.length} exercises ·{" "}
-                        {item.exercises.reduce(
-                          (sum, exercise) => sum + plannedSetCount(exercise),
-                          0,
-                        )}{" "}
-                        sets
-                      </small>
-                    </span>
-                    <span className="workoutChoiceState">
-                      {index === selectedWorkout ? "SELECTED" : "CHOOSE"}
-                    </span>
+                    {workoutChooserOpen ? "Close sessions" : "Change session"}
                   </button>
-                ))}
+                  <button onClick={() => setView("plan")} type="button">
+                    Edit plan
+                  </button>
+                </div>
               </div>
+              {workoutChooserOpen && (
+                <div className="workoutChoiceList">
+                  {recommendation.workouts.map((item, index) => (
+                    <button
+                      aria-pressed={index === selectedWorkout}
+                      className={index === selectedWorkout ? "active" : ""}
+                      key={`${item.day}-${item.title}`}
+                      onClick={() => selectWorkout(index)}
+                      type="button"
+                    >
+                      <span
+                        className="workoutChoiceDay"
+                        style={{ "--accent": item.accent } as React.CSSProperties}
+                      >
+                        {item.day}
+                      </span>
+                      <span>
+                        <strong>{item.title}</strong>
+                        <small>{item.exercises.length} exercises</small>
+                      </span>
+                      <span className="workoutChoiceState">
+                        {index === selectedWorkout ? "SELECTED" : "CHOOSE"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </section>
 
             <div className="loggerLayout">
               <section className="loggerPanel">
+                <div className="exerciseRail" aria-label="Workout exercise progress">
+                  {workout.exercises.map((exercise, index) => {
+                    const baseKey = `${workout.day}-${workout.title}-${index}`;
+                    const done = Array.from(
+                      { length: plannedSetCount(exercise) },
+                      (_, setIndex) => completed[`${baseKey}-${setIndex + 1}`],
+                    ).every(Boolean);
+                    return (
+                      <button
+                        aria-current={index === activeWorkoutExercise ? "step" : undefined}
+                        className={`${index === activeWorkoutExercise ? "active " : ""}${done ? "done" : ""}`.trim()}
+                        key={baseKey}
+                        onClick={() => setActiveWorkoutExercise(index)}
+                        type="button"
+                      >
+                        <span>{done ? "✓" : index + 1}</span>
+                        <small>{exercise.name}</small>
+                      </button>
+                    );
+                  })}
+                </div>
                 {workout.exercises.map((exercise, index) => {
+                  if (index !== activeWorkoutExercise) return null;
                   const baseKey = `${workout.day}-${workout.title}-${index}`;
                   const previous = previousPerformance(exercise.name);
                   const targetWeight = plannedWeight(exercise);
@@ -2474,6 +3004,27 @@ export default function Home() {
                     </div>
                   );
                 })}
+                <div className="exerciseStepper">
+                  <button
+                    disabled={activeWorkoutExercise === 0}
+                    onClick={() => setActiveWorkoutExercise((current) => Math.max(0, current - 1))}
+                    type="button"
+                  >
+                    ← Previous
+                  </button>
+                  <span>
+                    Exercise {activeWorkoutExercise + 1} of {workout.exercises.length}
+                  </span>
+                  <button
+                    disabled={activeWorkoutExercise === workout.exercises.length - 1}
+                    onClick={() => setActiveWorkoutExercise((current) =>
+                      Math.min(workout.exercises.length - 1, current + 1),
+                    )}
+                    type="button"
+                  >
+                    Next →
+                  </button>
+                </div>
                 <div className="loggerFooter">
                   <button
                     className="secondaryAction"
@@ -2596,6 +3147,27 @@ export default function Home() {
               </button>
             </div>
 
+            <div className="progressRangeTabs" aria-label="Progress time range">
+              {(["4w", "12w", "all"] as ProgressRange[]).map((range) => (
+                <button
+                  aria-pressed={progressRange === range}
+                  className={progressRange === range ? "active" : ""}
+                  key={range}
+                  onClick={() => setProgressRange(range)}
+                  type="button"
+                >
+                  {range === "4w" ? "4 weeks" : range === "12w" ? "12 weeks" : "All time"}
+                </button>
+              ))}
+            </div>
+
+            <section className="progressKpis" aria-label="Progress summary">
+              <article><span>COMPLETED</span><strong>{rangeCompleted}</strong><small>full workouts</small></article>
+              <article><span>PARTIAL</span><strong>{rangePartial}</strong><small>saved sessions</small></article>
+              <article><span>VOLUME</span><strong>{rangeVolume.toLocaleString()}</strong><small>kg lifted</small></article>
+              <article><span>EST. 1RM</span><strong>{estimatedOneRepMax}</strong><small>best estimated kg</small></article>
+            </section>
+
             <div className="progressGrid">
               <article className="chartPanel">
                 <div className="panelTitle">
@@ -2615,22 +3187,55 @@ export default function Home() {
                 </div>
               </article>
 
-              <article className="progressSummary">
-                <p className="eyebrow">TOTALS</p>
+              <article className="bodyWeightPanel">
                 <div>
-                  <strong>{logs.length}</strong>
-                  <span>workouts</span>
+                  <p className="eyebrow">BODY WEIGHT</p>
+                  <h2>Quick check-in</h2>
+                  <span>
+                    {bodyWeights[0]
+                      ? `Latest ${bodyWeights[0].weight} kg · ${formatDate(bodyWeights[0].recordedAt)}`
+                      : "Add your first measurement"}
+                  </span>
                 </div>
-                <div>
-                  <strong>{totalMinutes}</strong>
-                  <span>minutes trained</span>
+                <div className="bodyWeightEntry">
+                  <label>
+                    <span className="srOnly">Body weight in kilograms</span>
+                    <input
+                      inputMode="decimal"
+                      max="400"
+                      min="25"
+                      onChange={(event) => setBodyWeightInput(event.target.value)}
+                      placeholder="72.5"
+                      step="0.1"
+                      type="number"
+                      value={bodyWeightInput}
+                    />
+                    <small>KG</small>
+                  </label>
+                  <button
+                    disabled={saving || !bodyWeightInput}
+                    onClick={() => void logBodyWeight()}
+                    type="button"
+                  >
+                    Save
+                  </button>
                 </div>
-                <div>
-                  <strong>
-                    {logs.reduce((sum, log) => sum + log.exercisesCompleted, 0)}
-                  </strong>
-                  <span>exercises completed</span>
-                </div>
+                {bodyWeightProgress.length > 1 && (
+                  <div className="bodyWeightBars" aria-label="Body weight trend">
+                    {bodyWeightProgress.slice(-10).map((entry) => (
+                      <span
+                        key={`${entry.id}-${entry.recordedAt}`}
+                        style={{
+                          height: `${bodyWeightMax === bodyWeightMin
+                            ? 55
+                            : 25 + ((entry.weight - bodyWeightMin) /
+                              (bodyWeightMax - bodyWeightMin)) * 65}%`,
+                        }}
+                        title={`${entry.weight} kg on ${formatDate(entry.recordedAt)}`}
+                      />
+                    ))}
+                  </div>
+                )}
               </article>
             </div>
 
@@ -2721,7 +3326,7 @@ export default function Home() {
                   <h2>Workout history</h2>
                 </div>
               </div>
-              {logs.length ? (
+              {progressLogs.length ? (
                 <div className="historyTable">
                   <div className="historyHead">
                     <span>WORKOUT</span>
@@ -2730,7 +3335,7 @@ export default function Home() {
                     <span>DURATION</span>
                     <span>STATUS</span>
                   </div>
-                  {logs.map((log) => (
+                  {progressLogs.map((log) => (
                     <div className="historyRow" key={log.id}>
                       <span>
                         <span
@@ -2786,6 +3391,41 @@ export default function Home() {
           </button>
         ))}
       </nav>
+
+      {pendingCoachPlan && (
+        <div
+          aria-labelledby="coach-plan-title"
+          aria-modal="true"
+          className="modalBackdrop"
+          role="dialog"
+        >
+          <div className="confirmModal">
+            <span className="confirmIcon">✦</span>
+            <p className="eyebrow">APPLY COACH PLAN</p>
+            <h2 id="coach-plan-title">Replace your current weekly plan?</h2>
+            <p>
+              <strong>{coachRecommendation.name}</strong> will become My Plan.
+              Your workout history stays unchanged, and every exercise remains editable.
+            </p>
+            <div>
+              <button
+                className="secondaryAction"
+                onClick={() => setPendingCoachPlan(false)}
+                type="button"
+              >
+                Keep current plan
+              </button>
+              <button
+                className="primaryAction"
+                onClick={useCoachPlan}
+                type="button"
+              >
+                Replace My Plan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {savedDraft && (
         <div
@@ -2915,7 +3555,9 @@ export default function Home() {
         >
           <div className="confirmModal workoutCompleteModal">
             <span className="confirmIcon">✓</span>
-            <p className="eyebrow">WORKOUT SAVED</p>
+            <p className="eyebrow">
+              {completedWorkoutSummary.pendingSync ? "SAVED ON DEVICE" : "WORKOUT SAVED"}
+            </p>
             <h2 id="workout-saved-title">
               {completedWorkoutSummary.workoutName} complete
             </h2>
@@ -2936,6 +3578,11 @@ export default function Home() {
             {completedWorkoutSummary.note && (
               <p className="savedWorkoutNote">
                 “{completedWorkoutSummary.note}”
+              </p>
+            )}
+            {completedWorkoutSummary.pendingSync && (
+              <p className="savedWorkoutNote">
+                This workout will sync automatically when your connection returns.
               </p>
             )}
             <button

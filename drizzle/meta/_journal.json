@@ -29,6 +29,13 @@
       "when": 1785577211562,
       "tag": "0003_smiling_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787203586262,
+      "tag": "0004_overjoyed_legion",
+      "breakpoints": true
     }
   ]
 }

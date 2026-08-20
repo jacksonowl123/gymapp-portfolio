@@ -1,0 +1,23 @@
+{
+  "name": "Liftly Gym Planner",
+  "short_name": "Liftly",
+  "description": "Plan gym sessions, log lifts and follow your progress.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3f0e9",
+  "theme_color": "#1d1e1b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/liftly-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/liftly-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

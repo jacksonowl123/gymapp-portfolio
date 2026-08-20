@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { headers } from "next/headers";
 import "./globals.css";
@@ -13,6 +13,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#1d1e1b",
+};
+
 export async function generateMetadata(): Promise<Metadata> {
   const requestHeaders = await headers();
   const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
@@ -24,6 +28,12 @@ export async function generateMetadata(): Promise<Metadata> {
     title: "Liftly — Your Adaptive Training Plan",
     description:
       "Build a gym plan around your goal, schedule, experience, and equipment—then log every workout as you progress.",
+    manifest: "/manifest.webmanifest",
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "Liftly",
+    },
     icons: {
       icon: [
         {
