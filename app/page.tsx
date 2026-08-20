@@ -772,9 +772,7 @@ export default function Home() {
   const [pendingCoachPlan, setPendingCoachPlan] = useState(false);
   const [installPrompt, setInstallPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
-  const [isOnline, setIsOnline] = useState(() =>
-    typeof navigator === "undefined" ? true : navigator.onLine,
-  );
+  const [isOnline, setIsOnline] = useState(true);
   const [queuedChanges, setQueuedChanges] = useState(0);
   const [completedWorkoutSummary, setCompletedWorkoutSummary] =
     useState<CompletedWorkoutSummary | null>(null);
@@ -1027,6 +1025,10 @@ export default function Home() {
     };
     const handleInstalled = () => setInstallPrompt(null);
 
+    const initialOnlineCheck = window.setTimeout(
+      () => setIsOnline(navigator.onLine),
+      0,
+    );
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
     window.addEventListener("beforeinstallprompt", handleInstallPrompt);
@@ -1035,6 +1037,7 @@ export default function Home() {
       void navigator.serviceWorker.register("/sw.js");
     }
     return () => {
+      window.clearTimeout(initialOnlineCheck);
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("beforeinstallprompt", handleInstallPrompt);

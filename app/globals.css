@@ -3165,6 +3165,26 @@ button.previousSet:hover {
   width: 1px;
 }
 
+@media (max-width: 1500px) {
+  .planWorkspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .planSide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .exerciseEditor {
+    padding-left: 16px;
+  }
+
+  .exerciseEditorHead,
+  .exerciseEditRow {
+    gap: 6px;
+    grid-template-columns: 44px minmax(95px, 1fr) 44px 56px 56px 72px 118px 138px;
+  }
+}
+
 @media (max-width: 1050px) {
   .appShell {
     grid-template-columns: 205px minmax(0, 1fr);
@@ -3454,6 +3474,118 @@ button.previousSet:hover {
 
   .mobileNav button.active {
     color: var(--orange);
+  }
+}
+
+@media (max-width: 760px) {
+  .dayPlanner {
+    padding-inline: 10px;
+  }
+
+  .dayPlanRow {
+    align-items: start;
+    gap: 8px 11px;
+    grid-template-columns: 52px minmax(0, 1fr);
+    padding-block: 12px;
+  }
+
+  .dayPlanBadge {
+    grid-row: 1 / 4;
+    height: 62px;
+    width: 52px;
+  }
+
+  .dayPlanSelect {
+    grid-column: 2;
+  }
+
+  .dayPlanAction {
+    grid-column: 2;
+    justify-self: start;
+    min-height: 32px;
+  }
+
+  .dayPlanCopy small {
+    white-space: normal;
+  }
+
+  .exerciseEditor {
+    padding: 12px;
+  }
+
+  .exerciseEditorHead {
+    display: none;
+  }
+
+  .exerciseEditRow {
+    align-items: end;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    grid-template-columns: 44px minmax(90px, 1fr) 60px 64px;
+    padding: 10px;
+  }
+
+  .dragExercise {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .exerciseNameField {
+    grid-column: 2 / -1;
+    grid-row: 1;
+  }
+
+  .exerciseEditRow > label:nth-of-type(2) {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .exerciseEditRow > label:nth-of-type(3) {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .exerciseEditRow > label:nth-of-type(4) {
+    grid-column: 4;
+    grid-row: 2;
+  }
+
+  .restField {
+    grid-column: 2 / -1;
+    grid-row: 3;
+  }
+
+  .techniqueField {
+    grid-column: 2 / -1;
+    grid-row: 4;
+  }
+
+  .techniqueDetails {
+    grid-column: 1 / -1;
+  }
+
+  .exerciseOrderActions {
+    grid-column: 2 / -1;
+    grid-row: 5;
+    justify-self: end;
+  }
+
+  .fieldCaption {
+    color: var(--muted);
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .duplicateExerciseWarning {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .duplicateExerciseWarning button {
+    margin-left: 0;
   }
 }
 

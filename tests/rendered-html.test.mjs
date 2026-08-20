@@ -33,6 +33,8 @@ test("keeps unfinished workout sessions recoverable", async () => {
   assert.match(page, /inactive time was not added/);
   assert.match(page, /Previous reps copied/);
   assert.match(page, /NotificationClass\.requestPermission/);
+  assert.match(page, /const \[isOnline, setIsOnline\] = useState\(true\)/);
+  assert.match(page, /setIsOnline\(navigator\.onLine\)/);
 });
 
 test("uses calendar-accurate weekly progress and protects plan quality", async () => {
@@ -71,6 +73,14 @@ test("supports supersets and drop sets in My Plan and workout logging", async ()
   assert.match(styles, /\.exerciseEditRow\.supersetLead/);
   assert.match(styles, /\.dropSetLoggerRow/);
   assert.match(styles, /\.supersetSequence/);
+});
+
+test("keeps the expanded plan editor contained on laptop and tablet widths", async () => {
+  const styles = await source("app/globals.css");
+
+  assert.match(styles, /@media \(max-width: 1500px\)[\s\S]*?\.planWorkspace[\s\S]*?grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(styles, /@media \(max-width: 760px\)[\s\S]*?\.exerciseEditRow[\s\S]*?grid-template-columns: 44px minmax\(90px, 1fr\) 60px 64px/);
+  assert.match(styles, /\.duplicateExerciseWarning[\s\S]*?flex-wrap: wrap/);
 });
 
 test("persists workout notes in D1 with a migration", async () => {
