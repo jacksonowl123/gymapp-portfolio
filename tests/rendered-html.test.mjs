@@ -84,7 +84,8 @@ test("keeps the expanded plan editor contained on laptop and tablet widths", asy
 });
 
 test("supports iPad Air and iPhone Pro Max safe responsive layouts", async () => {
-  const [layout, styles] = await Promise.all([
+  const [page, layout, styles] = await Promise.all([
+    source("app/page.tsx"),
     source("app/layout.tsx"),
     source("app/globals.css"),
   ]);
@@ -98,6 +99,9 @@ test("supports iPad Air and iPhone Pro Max safe responsive layouts", async () =>
   assert.match(styles, /\.appPage button,[\s\S]*?min-width: 44px/);
   assert.match(styles, /\.confirmModal > div button,[\s\S]*?min-height: 44px/);
   assert.match(styles, /\.appPage:has\(\.planSaveAction\)[\s\S]*?padding-bottom/);
+  assert.match(page, /className={`mobileAccount\$\{account\.signedIn/);
+  assert.match(page, /account\.signedIn \? "Sync active" : "Sign in to sync"/);
+  assert.match(styles, /@media \(max-width: 1100px\)[\s\S]*?\.mobileAccount[\s\S]*?display: flex/);
 });
 
 test("persists workout notes in D1 with a migration", async () => {

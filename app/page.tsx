@@ -2081,6 +2081,24 @@ export default function Home() {
             <p>{today}</p>
           </div>
           <div className="headerActions">
+            <a
+              aria-label={
+                account.signedIn
+                  ? `${account.displayName}, account sync active`
+                  : "Sign in to sync your Liftly account"
+              }
+              className={`mobileAccount${account.signedIn ? " isSynced" : ""}`}
+              href={account.signedIn ? undefined : "/signin-with-chatgpt?return_to=%2F"}
+            >
+              <span className="mobileAccountAvatar" aria-hidden="true">
+                {accountInitials}
+                <span />
+              </span>
+              <span className="mobileAccountCopy">
+                <strong>{account.displayName}</strong>
+                <small>{account.signedIn ? "Sync active" : "Sign in to sync"}</small>
+              </span>
+            </a>
             {installPrompt && (
               <button
                 className="installAction"

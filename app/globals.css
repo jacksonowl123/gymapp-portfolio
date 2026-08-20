@@ -285,6 +285,10 @@ input:focus-visible {
   display: none;
 }
 
+.mobileAccount {
+  display: none;
+}
+
 .headerActions {
   align-items: center;
   display: flex;
@@ -3277,6 +3281,70 @@ button.previousSet:hover {
     width: 3px;
   }
 
+  .mobileAccount {
+    align-items: center;
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    color: var(--ink);
+    display: flex;
+    gap: 8px;
+    min-height: 44px;
+    padding: 5px 10px 5px 6px;
+    text-decoration: none;
+  }
+
+  .mobileAccountAvatar {
+    align-items: center;
+    background: #f0b38f;
+    border-radius: 50%;
+    display: flex;
+    flex: 0 0 auto;
+    font-size: 8px;
+    font-weight: 850;
+    height: 30px;
+    justify-content: center;
+    position: relative;
+    width: 30px;
+  }
+
+  .mobileAccountAvatar > span {
+    background: #a9c96f;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    bottom: -1px;
+    height: 9px;
+    position: absolute;
+    right: -1px;
+    width: 9px;
+  }
+
+  .mobileAccount:not(.isSynced) .mobileAccountAvatar > span {
+    background: #b4b5ae;
+  }
+
+  .mobileAccountCopy {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+    min-width: 0;
+  }
+
+  .mobileAccountCopy strong {
+    font-size: 10px;
+    max-width: 92px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobileAccountCopy small {
+    color: var(--muted);
+    font-size: 9px;
+    margin-top: 2px;
+    white-space: nowrap;
+  }
+
   .headerIcon {
     display: none;
   }
@@ -3615,6 +3683,19 @@ button.previousSet:hover {
 }
 
 @media (max-width: 500px) {
+  .mobileAccount {
+    padding-right: 8px;
+  }
+
+  .mobileAccountCopy strong {
+    display: none;
+  }
+
+  .mobileAccountCopy small {
+    font-size: 8px;
+    margin: 0;
+  }
+
   .headerActions .primaryAction {
     padding: 0 11px;
   }
