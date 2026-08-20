@@ -132,11 +132,13 @@ test("syncs account-scoped training data with retry-safe offline writes", async 
 });
 
 test("ships an installable shell and a focused one-exercise workout flow", async () => {
-  const [page, layout, manifest, worker] = await Promise.all([
+  const [page, layout, manifest, worker, packageJson, assetVersioner] = await Promise.all([
     source("app/page.tsx"),
     source("app/layout.tsx"),
     source("public/manifest.webmanifest"),
     source("public/sw.js"),
+    source("package.json"),
+    source("scripts/version-static-assets.mjs"),
   ]);
 
   assert.match(layout, /manifest: "\/manifest.webmanifest"/);
@@ -144,6 +146,9 @@ test("ships an installable shell and a focused one-exercise workout flow", async
   assert.match(manifest, /liftly-icon-512\.png/);
   assert.match(worker, /liftly-shell-v2/);
   assert.match(worker, /fetch\(request, \{ cache: "no-cache" \}\)/);
+  assert.match(packageJson, /version-static-assets\.mjs/);
+  assert.match(assetVersioner, /createHash\("sha256"\)/);
+  assert.match(assetVersioner, /\?v=\$\{version\}/);
   assert.match(page, /serviceWorker\.register\("\/sw\.js"\)/);
   assert.match(page, /activeWorkoutExercise/);
   assert.match(page, /Change session/);
