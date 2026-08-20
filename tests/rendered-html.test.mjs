@@ -142,7 +142,8 @@ test("ships an installable shell and a focused one-exercise workout flow", async
   assert.match(layout, /manifest: "\/manifest.webmanifest"/);
   assert.match(manifest, /"display": "standalone"/);
   assert.match(manifest, /liftly-icon-512\.png/);
-  assert.match(worker, /liftly-shell-v1/);
+  assert.match(worker, /liftly-shell-v2/);
+  assert.match(worker, /fetch\(request, \{ cache: "no-cache" \}\)/);
   assert.match(page, /serviceWorker\.register\("\/sw\.js"\)/);
   assert.match(page, /activeWorkoutExercise/);
   assert.match(page, /Change session/);

@@ -1,4 +1,4 @@
-const CACHE_NAME = "liftly-shell-v1";
+const CACHE_NAME = "liftly-shell-v2";
 const APP_SHELL = [
   "/",
   "/manifest.webmanifest",
@@ -57,6 +57,21 @@ self.addEventListener("fetch", (event) => {
         .catch(async () =>
           (await caches.match(request)) || (await caches.match("/")),
         ),
+    );
+    return;
+  }
+
+  if (url.pathname.startsWith("/assets/")) {
+    event.respondWith(
+      fetch(request, { cache: "no-cache" })
+        .then(async (response) => {
+          if (response.ok) {
+            const cache = await caches.open(CACHE_NAME);
+            await cache.put(request, response.clone());
+          }
+          return response;
+        })
+        .catch(() => caches.match(request)),
     );
     return;
   }
