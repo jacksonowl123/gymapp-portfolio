@@ -16,6 +16,7 @@ type TrainingType =
   | "conditioning"
   | "mobility";
 type DayAssignment = TrainingType | "rest";
+type SetTechnique = "straight" | "superset" | "drop-set";
 
 type Profile = {
   goal: Goal;
@@ -32,6 +33,7 @@ type Exercise = {
   reps?: string;
   weight?: string;
   rest?: string;
+  technique?: SetTechnique;
 };
 
 type LibraryExercise = Exercise & {
@@ -123,6 +125,11 @@ type RestAlerts = {
 };
 
 const dayLabels = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const techniqueOptions: Array<{ value: SetTechnique; label: string }> = [
+  { value: "straight", label: "Straight sets" },
+  { value: "superset", label: "Superset with next" },
+  { value: "drop-set", label: "Drop set" },
+];
 const MAX_DRAFT_IDLE_SECONDS = 2 * 60 * 60;
 const MAX_WORKOUT_SESSION_SECONDS = 6 * 60 * 60;
 
@@ -337,7 +344,58 @@ function hydrateExercise(exercise: Exercise): Exercise {
     reps: exercise.reps ?? (repParts.join("×").trim() || "10"),
     weight: exercise.weight ?? "",
     rest: exercise.rest ?? "90 sec",
+    technique: exercise.technique ?? "straight",
   };
+}
+
+function isSupersetLead(exercises: Exercise[], index: number) {
+  return (
+    index < exercises.length - 1 &&
+    hydrateExercise(exercises[index]).technique === "superset"
+  );
+}
+
+function isSupersetPartner(exercises: Exercise[], index: number) {
+  return index > 0 && isSupersetLead(exercises, index - 1);
+}
+
+function normalizeExerciseTechniques(exercises: Exercise[]) {
+  return exercises.map((exercise, index) => {
+    const hydrated = hydrateExercise(exercise);
+    if (
+      isSupersetPartner(exercises, index) ||
+      (hydrated.technique === "superset" && index === exercises.length - 1)
+    ) {
+      return { ...hydrated, technique: "straight" as SetTechnique };
+    }
+    return hydrated;
+  });
+}
+
+function workoutTechniqueMeta(exercises: Exercise[], index: number) {
+  const exercise = hydrateExercise(exercises[index]);
+  if (isSupersetPartner(exercises, index)) {
+    return {
+      kind: "superset",
+      label: "SUPERSET · B",
+      detail: `Complete this after ${exercises[index - 1].name}, then take your planned rest.`,
+    };
+  }
+  if (isSupersetLead(exercises, index)) {
+    return {
+      kind: "superset",
+      label: "SUPERSET · A",
+      detail: `Move straight to ${exercises[index + 1].name} without resting.`,
+    };
+  }
+  if (exercise.technique === "drop-set") {
+    return {
+      kind: "drop-set",
+      label: "DROP SET",
+      detail: "Start at your planned KG, then reduce the load 20–30% and continue before resting.",
+    };
+  }
+  return null;
 }
 
 function exercisePrescription(exercise: Exercise) {
@@ -1441,6 +1499,18 @@ export default function Home() {
       window.setTimeout(() => setNotice(""), 3200);
       return false;
     }
+    const invalidSuperset = next.workouts.find((item) =>
+      item.exercises.some(
+        (exercise, index) =>
+          hydrateExercise(exercise).technique === "superset" &&
+          index === item.exercises.length - 1,
+      ),
+    );
+    if (invalidSuperset) {
+      setNotice(`Move the superset in ${invalidSuperset.day} above another exercise to create a pair.`);
+      window.setTimeout(() => setNotice(""), 3200);
+      return false;
+    }
     const nextProfile = { ...profile, days: next.workouts.length };
     setProfile(nextProfile);
     setRecommendation(next);
@@ -1492,20 +1562,26 @@ export default function Home() {
   function updateDayExercise(
     day: string,
     index: number,
-    field: "name" | "setCount" | "reps" | "weight" | "rest",
+    field: "name" | "setCount" | "reps" | "weight" | "rest" | "technique",
     value: string,
   ) {
-    setDayExercises((current) => ({
-      ...current,
-      [day]: (current[day] ?? []).map((exercise, exerciseIndex) => {
+    setDayExercises((current) => {
+      const nextExercises = (current[day] ?? []).map((exercise, exerciseIndex) => {
         if (exerciseIndex !== index) return exercise;
         const next = { ...hydrateExercise(exercise), [field]: value };
         return {
           ...next,
           sets: `${next.setCount} × ${next.reps}`,
         };
-      }),
-    }));
+      });
+      if (field === "technique" && value === "superset" && nextExercises[index + 1]) {
+        nextExercises[index + 1] = {
+          ...hydrateExercise(nextExercises[index + 1]),
+          technique: "straight",
+        };
+      }
+      return { ...current, [day]: nextExercises };
+    });
   }
 
   function addDayExercise(day: string) {
@@ -1521,6 +1597,7 @@ export default function Home() {
           reps: "10",
           weight: "",
           rest: "90 sec",
+          technique: "straight",
         },
       ],
     }));
@@ -1552,6 +1629,7 @@ export default function Home() {
       reps: exercise.reps,
       weight: exercise.weight ?? "",
       rest: exercise.rest,
+      technique: exercise.technique ?? "straight",
     };
     const nextDayExercises = {
       ...dayExercises,
@@ -1571,8 +1649,8 @@ export default function Home() {
   function removeDayExercise(day: string, index: number) {
     setDayExercises((current) => ({
       ...current,
-      [day]: (current[day] ?? []).filter(
-        (_, exerciseIndex) => exerciseIndex !== index,
+      [day]: normalizeExerciseTechniques(
+        (current[day] ?? []).filter((_, exerciseIndex) => exerciseIndex !== index),
       ),
     }));
   }
@@ -1590,7 +1668,10 @@ export default function Home() {
     }
     const [moved] = exercises.splice(fromIndex, 1);
     exercises.splice(toIndex, 0, moved);
-    const nextDayExercises = { ...dayExercises, [day]: exercises };
+    const nextDayExercises = {
+      ...dayExercises,
+      [day]: normalizeExerciseTechniques(exercises),
+    };
     setDayExercises(nextDayExercises);
     persistManualPlan(nextDayExercises, {
       resetWorkout: false,
@@ -2222,6 +2303,7 @@ export default function Home() {
                               <span>REPS</span>
                               <span>KG</span>
                               <span>REST</span>
+                              <span>TECHNIQUE</span>
                               <span>ORDER</span>
                             </div>
                             {duplicateNames.length > 0 && (
@@ -2247,6 +2329,14 @@ export default function Home() {
                                 dragTarget?.day === day &&
                                 dragTarget.index === exerciseIndex &&
                                 !isDragging;
+                              const supersetLead = isSupersetLead(
+                                exercises,
+                                exerciseIndex,
+                              );
+                              const supersetPartner = isSupersetPartner(
+                                exercises,
+                                exerciseIndex,
+                              );
                               return (
                                 <div
                                   className={[
@@ -2256,6 +2346,9 @@ export default function Home() {
                                     duplicateKeys.has(hydrated.name.trim().toLowerCase())
                                       ? "duplicate"
                                       : "",
+                                    supersetLead ? "supersetLead" : "",
+                                    supersetPartner ? "supersetPartner" : "",
+                                    hydrated.technique === "drop-set" ? "dropSet" : "",
                                   ].filter(Boolean).join(" ")}
                                   key={`${day}-${exerciseIndex}`}
                                   onDragOver={(event) => {
@@ -2382,6 +2475,39 @@ export default function Home() {
                                         (rest) => (
                                           <option key={rest}>{rest}</option>
                                         ),
+                                      )}
+                                    </select>
+                                  </label>
+                                  <label className="techniqueField">
+                                    <span className="fieldCaption">Technique</span>
+                                    <select
+                                      aria-label={`Set technique for ${hydrated.name || `exercise ${exerciseIndex + 1}`}`}
+                                      disabled={supersetPartner}
+                                      onChange={(event) =>
+                                        updateDayExercise(
+                                          day,
+                                          exerciseIndex,
+                                          "technique",
+                                          event.target.value,
+                                        )
+                                      }
+                                      value={supersetPartner ? "straight" : hydrated.technique}
+                                    >
+                                      {supersetPartner ? (
+                                        <option value="straight">Superset partner</option>
+                                      ) : (
+                                        techniqueOptions.map((technique) => (
+                                          <option
+                                            disabled={
+                                              technique.value === "superset" &&
+                                              exerciseIndex === exercises.length - 1
+                                            }
+                                            key={technique.value}
+                                            value={technique.value}
+                                          >
+                                            {technique.label}
+                                          </option>
+                                        ))
                                       )}
                                     </select>
                                   </label>
@@ -2884,6 +3010,10 @@ export default function Home() {
                   const baseKey = `${workout.day}-${workout.title}-${index}`;
                   const previous = previousPerformance(exercise.name);
                   const targetWeight = plannedWeight(exercise);
+                  const techniqueMeta = workoutTechniqueMeta(
+                    workout.exercises,
+                    index,
+                  );
                   const exerciseDone = Array.from(
                     { length: plannedSetCount(exercise) },
                     (_, setIndex) =>
@@ -2919,6 +3049,12 @@ export default function Home() {
                           </span>
                         </span>
                       </div>
+                      {techniqueMeta && (
+                        <div className={`techniqueCue ${techniqueMeta.kind}`}>
+                          <strong>{techniqueMeta.label}</strong>
+                          <span>{techniqueMeta.detail}</span>
+                        </div>
+                      )}
                       <div className="setLoggerHead">
                         <span>SET</span>
                         <span>PREVIOUS</span>
@@ -2990,7 +3126,21 @@ export default function Home() {
                                         ...current,
                                         [key]: checked,
                                       }));
-                                      if (checked) startRestTimer(exercise);
+                                      if (checked && isSupersetLead(workout.exercises, index)) {
+                                        setTimerLeft(0);
+                                        setTimerEndsAt(null);
+                                        setTimerLabel("");
+                                        setActiveWorkoutExercise(index + 1);
+                                        setNotice(
+                                          `Superset: continue with ${workout.exercises[index + 1].name} without resting.`,
+                                        );
+                                        window.setTimeout(() => setNotice(""), 2600);
+                                      } else if (checked) {
+                                        startRestTimer(exercise);
+                                        if (isSupersetPartner(workout.exercises, index)) {
+                                          setActiveWorkoutExercise(index - 1);
+                                        }
+                                      }
                                     }}
                                     type="checkbox"
                                   />

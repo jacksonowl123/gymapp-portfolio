@@ -1151,7 +1151,7 @@ input:focus-visible {
   align-items: center;
   display: grid;
   gap: 8px;
-  grid-template-columns: 44px minmax(145px, 1fr) 52px 64px 64px 82px 138px;
+  grid-template-columns: 44px minmax(140px, 1fr) 52px 64px 64px 82px 132px 138px;
 }
 
 .exerciseEditorHead {
@@ -1173,6 +1173,21 @@ input:focus-visible {
 
 .exerciseEditRow.dropTarget {
   box-shadow: 0 -2px 0 var(--orange);
+}
+
+.exerciseEditRow.supersetLead,
+.exerciseEditRow.supersetPartner {
+  border-left: 3px solid #805ad5;
+  padding-left: 5px;
+}
+
+.exerciseEditRow.supersetPartner {
+  border-left-style: dashed;
+}
+
+.exerciseEditRow.dropSet {
+  border-left: 3px solid var(--orange);
+  padding-left: 5px;
 }
 
 .dragExercise {
@@ -1210,6 +1225,16 @@ input:focus-visible {
 .exerciseEditRow select {
   cursor: pointer;
   padding-inline: 7px;
+}
+
+.exerciseEditRow select:disabled {
+  background: #f1f0eb;
+  color: #6d6e68;
+  cursor: default;
+}
+
+.techniqueField select {
+  font-size: 11px;
 }
 
 .exerciseEditRow input:focus,
@@ -1783,6 +1808,41 @@ input:focus-visible {
 
 .loggerExerciseBlock.done {
   background: #fafaf6;
+}
+
+.techniqueCue {
+  align-items: center;
+  background: #f5f0ff;
+  border: 1px solid #ded0f7;
+  border-left: 3px solid #805ad5;
+  border-radius: 6px;
+  display: flex;
+  gap: 10px;
+  margin: -2px 0 14px 44px;
+  padding: 9px 11px;
+}
+
+.techniqueCue.drop-set {
+  background: #fff4ed;
+  border-color: #f5d1bd;
+  border-left-color: var(--orange);
+}
+
+.techniqueCue strong {
+  color: #6842a6;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.techniqueCue.drop-set strong {
+  color: #b5531f;
+}
+
+.techniqueCue span {
+  color: #65665f;
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .loggerExerciseTop {
@@ -3069,7 +3129,7 @@ button.previousSet:hover {
   .exerciseEditorHead,
   .exerciseEditRow {
     gap: 6px;
-    grid-template-columns: 44px minmax(95px, 1fr) 44px 56px 56px 72px 138px;
+    grid-template-columns: 44px minmax(95px, 1fr) 44px 56px 56px 72px 118px 138px;
   }
 
   .planRows button {
@@ -3379,10 +3439,22 @@ button.previousSet:hover {
     grid-row: 3;
   }
 
-  .exerciseOrderActions {
+  .techniqueField {
     grid-column: 2 / -1;
     grid-row: 4;
+  }
+
+  .exerciseOrderActions {
+    grid-column: 2 / -1;
+    grid-row: 5;
     justify-self: end;
+  }
+
+  .techniqueCue {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    margin-left: 0;
   }
 
   .fieldCaption {

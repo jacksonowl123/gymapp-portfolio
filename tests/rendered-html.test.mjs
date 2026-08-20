@@ -52,6 +52,21 @@ test("uses calendar-accurate weekly progress and protects plan quality", async (
   assert.match(styles, /\.loggerRow > \.doneControl/);
 });
 
+test("supports supersets and drop sets in My Plan and workout logging", async () => {
+  const [page, styles] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(page, /type SetTechnique = "straight" \| "superset" \| "drop-set"/);
+  assert.match(page, /Superset with next/);
+  assert.match(page, /Drop set/);
+  assert.match(page, /workoutTechniqueMeta/);
+  assert.match(page, /without resting/);
+  assert.match(styles, /\.techniqueCue\.drop-set/);
+  assert.match(styles, /\.exerciseEditRow\.supersetLead/);
+});
+
 test("persists workout notes in D1 with a migration", async () => {
   const [route, schema, migration] = await Promise.all([
     source("app/api/fitness/route.ts"),
