@@ -1144,6 +1144,109 @@ input:focus-visible {
   cursor: default;
 }
 
+.dayPlanActions {
+  display: grid;
+  gap: 6px;
+}
+
+.dayPlanActions .dayPlanAction {
+  min-height: 34px;
+}
+
+.dayPlanAction.viewExercises {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.dayPlanAction.viewExercises:hover:not(:disabled) {
+  background: var(--orange);
+  border-color: var(--orange);
+  color: #fff;
+}
+
+.exercisePreview {
+  background: #f6f6f1;
+  border-bottom: 1px solid var(--line);
+  padding: 16px 16px 18px 85px;
+}
+
+.exercisePreviewHead {
+  align-items: flex-end;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.exercisePreviewHead h3 {
+  font-size: 16px;
+  margin-top: 4px;
+}
+
+.exercisePreviewHead > span {
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+}
+
+.exercisePreviewList {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.exercisePreviewList li {
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 10px;
+}
+
+.exercisePreviewList li > span {
+  align-items: center;
+  background: #efeee8;
+  border-radius: 50%;
+  display: flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  height: 28px;
+  justify-content: center;
+  width: 28px;
+}
+
+.exercisePreviewList li div {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.exercisePreviewList li strong {
+  font-size: 12px;
+}
+
+.exercisePreviewList li small {
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 3px;
+}
+
+.exercisePreviewList li em {
+  color: #6842a6;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  text-align: right;
+}
+
 .exerciseEditor {
   background: #f6f6f1;
   border-bottom: 1px solid var(--line);
@@ -3656,6 +3759,19 @@ button.previousSet:hover {
     min-height: 32px;
   }
 
+  .dayPlanActions {
+    display: flex;
+    grid-column: 2;
+  }
+
+  .exercisePreview {
+    padding: 12px;
+  }
+
+  .exercisePreviewList {
+    grid-template-columns: 1fr;
+  }
+
   .dayPlanCopy small {
     white-space: normal;
   }
@@ -3918,6 +4034,19 @@ button.previousSet:hover {
     grid-column: 2;
     justify-self: start;
     min-height: 32px;
+  }
+
+  .dayPlanActions {
+    display: flex;
+    grid-column: 2;
+  }
+
+  .exercisePreview {
+    padding: 12px;
+  }
+
+  .exercisePreviewList {
+    grid-template-columns: 1fr;
   }
 
   .dayPlanCopy small {

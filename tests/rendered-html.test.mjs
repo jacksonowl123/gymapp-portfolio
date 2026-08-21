@@ -33,6 +33,19 @@ test("keeps My plan beside Log workout in navigation", async () => {
   assert.ok(libraryPosition > workoutPosition);
 });
 
+test("offers separate view and edit actions for every training day", async () => {
+  const [page, styles] = await Promise.all([
+    source("app/page.tsx"),
+    source("app/globals.css"),
+  ]);
+
+  assert.match(page, /View exercises/);
+  assert.match(page, /className="exercisePreview"/);
+  assert.match(page, /aria-label={`\$\{day\} exercises`}/);
+  assert.match(page, /className="dayPlanAction"[\s\S]*?>\s*{isExpanded \? "Close edit" : "Edit"}/);
+  assert.match(styles, /\.exercisePreviewList/);
+});
+
 test("keeps unfinished workout sessions recoverable", async () => {
   const page = await source("app/page.tsx");
 

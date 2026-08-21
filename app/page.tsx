@@ -725,7 +725,8 @@ export default function Home() {
   const [dayExercises, setDayExercises] = useState<Record<string, Exercise[]>>(
     () => exercisesFromWorkouts(buildRecommendation(defaultProfile).workouts),
   );
-  const [expandedDay, setExpandedDay] = useState("MON");
+  const [expandedDay, setExpandedDay] = useState("");
+  const [viewingDay, setViewingDay] = useState("");
   const [draggedExercise, setDraggedExercise] = useState<{
     day: string;
     index: number;
@@ -1653,7 +1654,13 @@ export default function Home() {
           ? []
           : toExercises(exerciseLibrary[assignment]),
     }));
-    if (assignment !== "rest") setExpandedDay(day);
+    if (assignment !== "rest") {
+      setViewingDay("");
+      setExpandedDay(day);
+    } else {
+      if (expandedDay === day) setExpandedDay("");
+      if (viewingDay === day) setViewingDay("");
+    }
   }
 
   function updateDayExercise(
@@ -2423,6 +2430,7 @@ export default function Home() {
                     ) ?? trainingOptions[0];
                     const isRest = assignment === "rest";
                     const isExpanded = expandedDay === day && !isRest;
+                    const isViewing = viewingDay === day && !isRest;
                     const duplicateNames = duplicateExerciseNames(exercises);
                     const duplicateKeys = new Set(
                       duplicateNames.map((name) => name.toLowerCase()),
@@ -2467,24 +2475,84 @@ export default function Home() {
                               ))}
                             </select>
                           </label>
-                          <button
-                            className="dayPlanAction"
-                            disabled={isRest}
-                            onClick={() =>
-                              setExpandedDay(isExpanded ? "" : day)
-                            }
-                            type="button"
-                          >
-                            {isRest
-                              ? "Rest"
-                              : isExpanded
-                                ? "Close"
-                                : "Edit exercises"}
-                          </button>
+                          <div className="dayPlanActions">
+                            {isRest ? (
+                              <button className="dayPlanAction" disabled type="button">
+                                Rest
+                              </button>
+                            ) : (
+                              <>
+                                <button
+                                  aria-expanded={isViewing}
+                                  aria-controls={`exercise-preview-${day}`}
+                                  className="dayPlanAction viewExercises"
+                                  onClick={() => {
+                                    setExpandedDay("");
+                                    setViewingDay(isViewing ? "" : day);
+                                  }}
+                                  type="button"
+                                >
+                                  {isViewing ? "Close view" : "View exercises"}
+                                </button>
+                                <button
+                                  aria-expanded={isExpanded}
+                                  aria-controls={`exercise-editor-${day}`}
+                                  className="dayPlanAction"
+                                  onClick={() => {
+                                    setViewingDay("");
+                                    setExpandedDay(isExpanded ? "" : day);
+                                  }}
+                                  type="button"
+                                >
+                                  {isExpanded ? "Close edit" : "Edit"}
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
 
+                        {isViewing && (
+                          <section
+                            aria-label={`${day} exercises`}
+                            className="exercisePreview"
+                            id={`exercise-preview-${day}`}
+                          >
+                            <div className="exercisePreviewHead">
+                              <div>
+                                <p className="eyebrow">{day} WORKOUT</p>
+                                <h3>{option.label} exercises</h3>
+                              </div>
+                              <span>{exercises.length} total</span>
+                            </div>
+                            <ol className="exercisePreviewList">
+                              {exercises.map((exercise, exerciseIndex) => {
+                                const hydrated = hydrateExercise(exercise);
+                                const techniqueLabel = isSupersetLead(exercises, exerciseIndex)
+                                  ? "Superset A"
+                                  : isSupersetPartner(exercises, exerciseIndex)
+                                    ? "Superset B"
+                                    : hydrated.technique === "drop-set"
+                                      ? "Drop set"
+                                      : "Straight sets";
+                                return (
+                                  <li key={`${day}-preview-${exerciseIndex}`}>
+                                    <span>{exerciseIndex + 1}</span>
+                                    <div>
+                                      <strong>{hydrated.name}</strong>
+                                      <small>
+                                        {exercisePrescription(hydrated)} · {plannedLoadLabel(hydrated)} · {hydrated.rest} rest
+                                      </small>
+                                    </div>
+                                    <em>{techniqueLabel}</em>
+                                  </li>
+                                );
+                              })}
+                            </ol>
+                          </section>
+                        )}
+
                         {isExpanded && (
-                          <div className="exerciseEditor">
+                          <div className="exerciseEditor" id={`exercise-editor-${day}`}>
                             <div className="exerciseEditorHead">
                               <span />
                               <span>EXERCISE</span>
