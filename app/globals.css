@@ -1970,6 +1970,85 @@ input:focus-visible {
   background: #fafaf6;
 }
 
+.activeSupersetSummary {
+  align-items: center;
+  background: #f5f0ff;
+  border: 1px solid #ded0f7;
+  border-bottom: 0;
+  border-left: 3px solid #805ad5;
+  border-radius: 8px 8px 0 0;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  margin: 16px 20px 0;
+  padding: 11px 13px;
+}
+
+.activeSupersetSummary strong,
+.activeSupersetSummary i {
+  color: #6842a6;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+}
+
+.activeSupersetSummary strong {
+  grid-column: 1 / -1;
+}
+
+.activeSupersetSummary i {
+  font-style: normal;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.activeSupersetSummary span {
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 0;
+}
+
+.activeSupersetSummary b {
+  align-items: center;
+  background: #805ad5;
+  border-radius: 50%;
+  color: #fff;
+  display: inline-flex;
+  font-size: 9px;
+  height: 22px;
+  justify-content: center;
+  margin-right: 6px;
+  width: 22px;
+}
+
+.activeSupersetSummary small {
+  color: #6d6e68;
+  font-size: 10px;
+  grid-column: 1 / -1;
+}
+
+.loggerExerciseBlock.supersetExercise {
+  background: #fcfaff;
+  border-left: 3px solid #805ad5;
+  border-right: 1px solid #ded0f7;
+  margin-inline: 20px;
+}
+
+.loggerExerciseBlock.supersetLeadBlock {
+  border-bottom: 1px dashed #cdbbea;
+}
+
+.loggerExerciseBlock.supersetPartnerBlock {
+  border-bottom: 1px solid #ded0f7;
+  border-radius: 0 0 8px 8px;
+  margin-bottom: 18px;
+}
+
+.loggerExerciseBlock.supersetExercise .exerciseNumber {
+  background: #805ad5;
+  color: #fff;
+  font-weight: 850;
+}
+
 .techniqueCue {
   align-items: center;
   background: #f5f0ff;
@@ -4410,6 +4489,32 @@ button.previousSet:hover {
   white-space: nowrap;
 }
 
+.exerciseRail button.supersetStep {
+  background: #f5f0ff;
+  border-color: #ded0f7;
+}
+
+.exerciseRail button.supersetStep small {
+  max-width: 170px;
+}
+
+.exerciseRail button.supersetStep em {
+  color: #6842a6;
+  font-family: var(--font-mono), monospace;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.exerciseRail button.supersetStep.active {
+  background: #f5f0ff;
+  border-color: #805ad5;
+}
+
+.exerciseRail button.supersetStep.active > span {
+  background: #805ad5;
+}
+
 .exerciseRail button.active {
   background: #fff4ef;
   border-color: var(--orange);
@@ -4636,6 +4741,10 @@ button.previousSet:hover {
   .workoutChooserActions { display: grid; grid-template-columns: 1fr 1fr; }
   .exerciseRail button small { display: none; }
   .exerciseRail button { padding-right: 6px; }
+  .exerciseRail button.supersetStep em { display: none; }
+  .activeSupersetSummary { grid-template-columns: 1fr; margin-inline: 12px; }
+  .activeSupersetSummary i { justify-self: center; }
+  .loggerExerciseBlock.supersetExercise { margin-inline: 12px; }
   .exerciseStepper span { display: none; }
   .exerciseStepper { grid-template-columns: 1fr 1fr; }
   .progressKpis { grid-template-columns: 1fr 1fr; }

@@ -74,6 +74,11 @@ test("supports supersets and drop sets in My Plan and workout logging", async ()
   assert.match(styles, /\.dropSetLoggerRow/);
   assert.match(styles, /\.supersetSequence/);
   assert.match(page, /const supersetLeadExercise = supersetPartner/);
+  assert.match(page, /groupWorkoutExercises/);
+  assert.match(page, /activeSupersetSummary/);
+  assert.match(page, /Complete matching sets together, then rest after B/);
+  assert.match(styles, /\.loggerExerciseBlock\.supersetExercise/);
+  assert.match(styles, /\.exerciseRail button\.supersetStep/);
   assert.match(styles, /\.dropSetSequence[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.addDropStage[\s\S]*?grid-column: 1 \/ -1/);
 });
@@ -159,5 +164,5 @@ test("ships an installable shell and a focused one-exercise workout flow", async
   assert.match(page, /serviceWorker\.register\("\/sw\.js"\)/);
   assert.match(page, /activeWorkoutExercise/);
   assert.match(page, /Change session/);
-  assert.match(page, /Exercise \{activeWorkoutExercise \+ 1\} of/);
+  assert.match(page, /Step \{activeWorkoutGroupIndex \+ 1\} of/);
 });

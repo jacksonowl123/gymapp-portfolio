@@ -385,6 +385,14 @@ function isSupersetPartner(exercises: Exercise[], index: number) {
   return index > 0 && isSupersetLead(exercises, index - 1);
 }
 
+function groupWorkoutExercises(exercises: Exercise[]) {
+  return exercises.reduce<number[][]>((groups, _exercise, index) => {
+    if (isSupersetPartner(exercises, index)) return groups;
+    groups.push(isSupersetLead(exercises, index) ? [index, index + 1] : [index]);
+    return groups;
+  }, []);
+}
+
 function normalizeExerciseTechniques(exercises: Exercise[]) {
   return exercises.map((exercise, index) => {
     const hydrated = hydrateExercise(exercise);
@@ -798,6 +806,15 @@ export default function Home() {
 
   const workout =
     recommendation.workouts[selectedWorkout] ?? recommendation.workouts[0];
+  const workoutExerciseGroups = groupWorkoutExercises(workout.exercises);
+  const activeWorkoutGroupIndex = Math.max(
+    0,
+    workoutExerciseGroups.findIndex((group) =>
+      group.includes(activeWorkoutExercise),
+    ),
+  );
+  const activeWorkoutGroup =
+    workoutExerciseGroups[activeWorkoutGroupIndex] ?? [0];
   const completedSets = Object.values(completed).filter(Boolean).length;
   const totalPlannedSets = workout.exercises.reduce(
     (sum, exercise) =>
@@ -3266,41 +3283,65 @@ export default function Home() {
             <div className="loggerLayout">
               <section className="loggerPanel">
                 <div className="exerciseRail" aria-label="Workout exercise progress">
-                  {workout.exercises.map((exercise, index) => {
-                    const baseKey = `${workout.day}-${workout.title}-${index}`;
-                    const done = [
-                      ...Array.from(
-                      { length: plannedSetCount(exercise) },
-                      (_, setIndex) => completed[`${baseKey}-${setIndex + 1}`],
-                      ),
-                      ...plannedDropStages(exercise).map(
-                        (_, stageIndex) => completed[`${baseKey}-drop-${stageIndex + 1}`],
-                      ),
-                    ].every(Boolean);
+                  {workoutExerciseGroups.map((exerciseIndexes, groupIndex) => {
+                    const groupExercises = exerciseIndexes.map(
+                      (exerciseIndex) => workout.exercises[exerciseIndex],
+                    );
+                    const done = exerciseIndexes.flatMap((exerciseIndex) => {
+                      const exercise = workout.exercises[exerciseIndex];
+                      const baseKey = `${workout.day}-${workout.title}-${exerciseIndex}`;
+                      return [
+                        ...Array.from(
+                          { length: plannedSetCount(exercise) },
+                          (_, setIndex) => completed[`${baseKey}-${setIndex + 1}`],
+                        ),
+                        ...plannedDropStages(exercise).map(
+                          (_, stageIndex) => completed[`${baseKey}-drop-${stageIndex + 1}`],
+                        ),
+                      ];
+                    }).every(Boolean);
+                    const isActive = groupIndex === activeWorkoutGroupIndex;
+                    const isSuperset = exerciseIndexes.length === 2;
                     return (
                       <button
-                        aria-current={index === activeWorkoutExercise ? "step" : undefined}
-                        className={`${index === activeWorkoutExercise ? "active " : ""}${done ? "done" : ""}`.trim()}
-                        key={baseKey}
-                        onClick={() => setActiveWorkoutExercise(index)}
+                        aria-current={isActive ? "step" : undefined}
+                        className={`${isActive ? "active " : ""}${done ? "done " : ""}${isSuperset ? "supersetStep" : ""}`.trim()}
+                        key={exerciseIndexes.join("-")}
+                        onClick={() => setActiveWorkoutExercise(exerciseIndexes[0])}
                         type="button"
                       >
-                        <span>{done ? "✓" : index + 1}</span>
-                        <small>{exercise.name}</small>
+                        <span>{done ? "✓" : groupIndex + 1}</span>
+                        <small>
+                          {groupExercises.map((exercise) => exercise.name).join(" + ")}
+                        </small>
+                        {isSuperset && <em>SUPERSET</em>}
                       </button>
                     );
                   })}
                 </div>
+                {activeWorkoutGroup.length === 2 && (
+                  <div className="activeSupersetSummary">
+                    <strong>SUPERSET · A → B</strong>
+                    <span>
+                      <b>A</b> {workout.exercises[activeWorkoutGroup[0]].name}
+                    </span>
+                    <i>NO REST</i>
+                    <span>
+                      <b>B</b> {workout.exercises[activeWorkoutGroup[1]].name}
+                    </span>
+                    <small>Complete matching sets together, then rest after B.</small>
+                  </div>
+                )}
                 {workout.exercises.map((exercise, index) => {
-                  if (index !== activeWorkoutExercise) return null;
+                  if (!activeWorkoutGroup.includes(index)) return null;
                   const baseKey = `${workout.day}-${workout.title}-${index}`;
                   const previous = previousPerformance(exercise.name);
                   const targetWeight = plannedWeight(exercise);
                   const dropStages = plannedDropStages(exercise);
-                  const techniqueMeta = workoutTechniqueMeta(
-                    workout.exercises,
-                    index,
-                  );
+                  const inActiveSuperset = activeWorkoutGroup.length === 2;
+                  const techniqueMeta = inActiveSuperset
+                    ? null
+                    : workoutTechniqueMeta(workout.exercises, index);
                   const exerciseDone = [
                     ...Array.from(
                       { length: plannedSetCount(exercise) },
@@ -3312,12 +3353,24 @@ export default function Home() {
                   ].every(Boolean);
                   return (
                     <div
-                      className={exerciseDone ? "loggerExerciseBlock done" : "loggerExerciseBlock"}
+                      className={[
+                        "loggerExerciseBlock",
+                        exerciseDone ? "done" : "",
+                        inActiveSuperset ? "supersetExercise" : "",
+                        inActiveSuperset && index === activeWorkoutGroup[0]
+                          ? "supersetLeadBlock"
+                          : "",
+                        inActiveSuperset && index === activeWorkoutGroup[1]
+                          ? "supersetPartnerBlock"
+                          : "",
+                      ].filter(Boolean).join(" ")}
                       key={baseKey}
                     >
                       <div className="loggerExerciseTop">
                         <span className="exerciseNumber" aria-hidden="true">
-                          {String(index + 1).padStart(2, "0")}
+                          {inActiveSuperset
+                            ? index === activeWorkoutGroup[0] ? "A" : "B"
+                            : String(index + 1).padStart(2, "0")}
                         </span>
                         <span className="loggerExercise">
                           <strong>{exercise.name}</strong>
@@ -3433,16 +3486,25 @@ export default function Home() {
                                         setTimerLeft(0);
                                         setTimerEndsAt(null);
                                         setTimerLabel("");
-                                        setActiveWorkoutExercise(index + 1);
                                         setNotice(
-                                          `Superset: continue with ${workout.exercises[index + 1].name} without resting.`,
+                                          `Superset set ${setNumber}: continue with ${workout.exercises[index + 1].name} without resting.`,
                                         );
                                         window.setTimeout(() => setNotice(""), 2600);
+                                      } else if (
+                                        checked &&
+                                        isSupersetPartner(workout.exercises, index)
+                                      ) {
+                                        const leadKey = `${workout.day}-${workout.title}-${index - 1}-${setNumber}`;
+                                        if (completed[leadKey]) {
+                                          startRestTimer(exercise);
+                                        } else {
+                                          setNotice(
+                                            `Complete ${workout.exercises[index - 1].name} set ${setNumber} first.`,
+                                          );
+                                          window.setTimeout(() => setNotice(""), 2600);
+                                        }
                                       } else if (checked) {
                                         startRestTimer(exercise);
-                                        if (isSupersetPartner(workout.exercises, index)) {
-                                          setActiveWorkoutExercise(index - 1);
-                                        }
                                       }
                                     }}
                                     type="checkbox"
@@ -3530,20 +3592,28 @@ export default function Home() {
                 })}
                 <div className="exerciseStepper">
                   <button
-                    disabled={activeWorkoutExercise === 0}
-                    onClick={() => setActiveWorkoutExercise((current) => Math.max(0, current - 1))}
+                    disabled={activeWorkoutGroupIndex === 0}
+                    onClick={() =>
+                      setActiveWorkoutExercise(
+                        workoutExerciseGroups[activeWorkoutGroupIndex - 1][0],
+                      )
+                    }
                     type="button"
                   >
                     ← Previous
                   </button>
                   <span>
-                    Exercise {activeWorkoutExercise + 1} of {workout.exercises.length}
+                    Step {activeWorkoutGroupIndex + 1} of {workoutExerciseGroups.length}
                   </span>
                   <button
-                    disabled={activeWorkoutExercise === workout.exercises.length - 1}
-                    onClick={() => setActiveWorkoutExercise((current) =>
-                      Math.min(workout.exercises.length - 1, current + 1),
-                    )}
+                    disabled={
+                      activeWorkoutGroupIndex === workoutExerciseGroups.length - 1
+                    }
+                    onClick={() =>
+                      setActiveWorkoutExercise(
+                        workoutExerciseGroups[activeWorkoutGroupIndex + 1][0],
+                      )
+                    }
                     type="button"
                   >
                     Next →
