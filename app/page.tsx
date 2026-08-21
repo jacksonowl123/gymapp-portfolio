@@ -2518,8 +2518,8 @@ export default function Home() {
                                 exercises,
                                 exerciseIndex,
                               );
-                              const supersetPartnerExercise = supersetLead
-                                ? hydrateExercise(exercises[exerciseIndex + 1])
+                              const supersetLeadExercise = supersetPartner
+                                ? hydrateExercise(exercises[exerciseIndex - 1])
                                 : null;
                               return (
                                 <div
@@ -2737,7 +2737,7 @@ export default function Home() {
                                       ×
                                     </button>
                                   </div>
-                                  {supersetPartnerExercise && (
+                                  {supersetLeadExercise && (
                                     <div className="techniqueDetails supersetDetails">
                                       <div className="techniqueDetailsHead">
                                         <strong>Superset order</strong>
@@ -2746,17 +2746,17 @@ export default function Home() {
                                       <div className="supersetSequence">
                                         <span>
                                           <b>A</b>
-                                          <strong>{hydrated.name || "First exercise"}</strong>
+                                          <strong>{supersetLeadExercise.name || "First exercise"}</strong>
                                           <small>
-                                            {exercisePrescription(hydrated)} · {plannedLoadLabel(hydrated)}
+                                            {exercisePrescription(supersetLeadExercise)} · {plannedLoadLabel(supersetLeadExercise)}
                                           </small>
                                         </span>
                                         <i>NO REST →</i>
                                         <span>
                                           <b>B</b>
-                                          <strong>{supersetPartnerExercise.name || "Next exercise"}</strong>
+                                          <strong>{hydrated.name || "Next exercise"}</strong>
                                           <small>
-                                            {exercisePrescription(supersetPartnerExercise)} · {plannedLoadLabel(supersetPartnerExercise)}
+                                            {exercisePrescription(hydrated)} · {plannedLoadLabel(hydrated)}
                                           </small>
                                         </span>
                                       </div>

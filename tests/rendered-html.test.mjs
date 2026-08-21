@@ -73,6 +73,9 @@ test("supports supersets and drop sets in My Plan and workout logging", async ()
   assert.match(styles, /\.exerciseEditRow\.supersetLead/);
   assert.match(styles, /\.dropSetLoggerRow/);
   assert.match(styles, /\.supersetSequence/);
+  assert.match(page, /const supersetLeadExercise = supersetPartner/);
+  assert.match(styles, /\.dropSetSequence[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(styles, /\.addDropStage[\s\S]*?grid-column: 1 \/ -1/);
 });
 
 test("keeps the expanded plan editor contained on laptop and tablet widths", async () => {

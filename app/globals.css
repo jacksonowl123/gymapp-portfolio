@@ -1189,6 +1189,10 @@ input:focus-visible {
   border-left-style: dashed;
 }
 
+.exerciseEditRow.supersetLead {
+  margin-bottom: 2px;
+}
+
 .exerciseEditRow.dropSet {
   border-left: 3px solid var(--orange);
   padding-left: 5px;
@@ -1328,10 +1332,9 @@ input:focus-visible {
 }
 
 .dropSetSequence {
-  align-items: end;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .dropStage {
@@ -1341,8 +1344,10 @@ input:focus-visible {
   border-radius: 6px;
   display: grid;
   gap: 6px;
-  grid-template-columns: auto 68px 68px 28px;
+  grid-template-columns: 48px minmax(64px, 1fr) minmax(64px, 1fr) 34px;
+  min-width: 0;
   padding: 7px;
+  width: 100%;
 }
 
 .dropStage > strong {
@@ -1358,6 +1363,10 @@ input:focus-visible {
   font-size: 8px;
   font-weight: 700;
   margin-bottom: 3px;
+}
+
+.dropStage label {
+  min-width: 0;
 }
 
 .dropStage input {
@@ -1382,7 +1391,10 @@ input:focus-visible {
 }
 
 .addDropStage {
+  grid-column: 1 / -1;
+  min-height: 40px;
   padding-inline: 10px;
+  width: 100%;
 }
 
 .exerciseEditRow input:focus,
@@ -3656,6 +3668,22 @@ button.previousSet:hover {
 
   .techniqueDetails {
     grid-column: 1 / -1;
+  }
+
+  .exerciseEditRow.supersetLead {
+    border-radius: 7px 7px 3px 3px;
+  }
+
+  .exerciseEditRow.supersetPartner {
+    border-radius: 3px 3px 7px 7px;
+  }
+
+  .dropSetSequence {
+    grid-template-columns: 1fr;
+  }
+
+  .dropStage {
+    grid-template-columns: minmax(55px, auto) 1fr 1fr 34px;
   }
 
   .exerciseOrderActions {
