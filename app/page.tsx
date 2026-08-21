@@ -1455,6 +1455,46 @@ export default function Home() {
     if (nextSeconds === 0) setTimerLabel("");
   }
 
+  function updateSupersetRoundSet(
+    exerciseIndex: number,
+    setNumber: number,
+    checked: boolean,
+  ) {
+    const exercise = workout.exercises[exerciseIndex];
+    const key = `${workout.day}-${workout.title}-${exerciseIndex}-${setNumber}`;
+    const targetWeight = plannedWeight(exercise);
+    const isPartner = isSupersetPartner(workout.exercises, exerciseIndex);
+
+    if (checked && targetWeight === null) {
+      setNotice(`Set KG for ${exercise.name} in My Plan first.`);
+      window.setTimeout(() => setNotice(""), 2800);
+      return;
+    }
+
+    if (checked && isPartner) {
+      const leadKey = `${workout.day}-${workout.title}-${exerciseIndex - 1}-${setNumber}`;
+      if (!completed[leadKey]) {
+        setNotice(`Complete ${workout.exercises[exerciseIndex - 1].name} first.`);
+        window.setTimeout(() => setNotice(""), 2600);
+        return;
+      }
+    }
+
+    setCompleted((current) => ({ ...current, [key]: checked }));
+    if (!checked) return;
+
+    if (isPartner) {
+      startRestTimer(exercise);
+      setNotice(`Round ${setNumber} complete. Take your planned rest.`);
+    } else {
+      setTimerLeft(0);
+      setTimerEndsAt(null);
+      setTimerLabel("");
+      setNotice(`Continue with ${workout.exercises[exerciseIndex + 1].name} — no rest.`);
+    }
+    window.setTimeout(() => setNotice(""), 2600);
+  }
+
   async function toggleRestAlert(setting: keyof RestAlerts) {
     let nextValue = !restAlerts[setting];
     if (setting === "notification" && nextValue) {
@@ -3381,12 +3421,125 @@ export default function Home() {
                     <small>Complete matching sets together, then rest after B.</small>
                   </div>
                 )}
-                {workout.exercises.map((exercise, index) => {
+                {activeWorkoutGroup.length === 2 && (() => {
+                  const leadIndex = activeWorkoutGroup[0];
+                  const partnerIndex = activeWorkoutGroup[1];
+                  const lead = workout.exercises[leadIndex];
+                  const partner = workout.exercises[partnerIndex];
+                  const roundCount = Math.max(
+                    plannedSetCount(lead),
+                    plannedSetCount(partner),
+                  );
+
+                  const renderRoundExercise = (
+                    exercise: Exercise,
+                    exerciseIndex: number,
+                    role: "A" | "B",
+                    setNumber: number,
+                  ) => {
+                    if (setNumber > plannedSetCount(exercise)) {
+                      return (
+                        <div className="supersetRoundExercise unavailable">
+                          <span className="roundRole">{role}</span>
+                          <div>
+                            <strong>{exercise.name}</strong>
+                            <small>No set planned for this round</small>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const key = `${workout.day}-${workout.title}-${exerciseIndex}-${setNumber}`;
+                    const previousSet = previousPerformance(exercise.name)[setNumber - 1];
+                    const entry = entries[key] ?? { reps: "" };
+                    const isDone = Boolean(completed[key]);
+                    const leadKey = `${workout.day}-${workout.title}-${leadIndex}-${setNumber}`;
+                    const waitingForLead = role === "B" && !completed[leadKey] && !isDone;
+                    return (
+                      <div
+                        className={`supersetRoundExercise ${isDone ? "done" : ""} ${waitingForLead ? "waiting" : ""}`.trim()}
+                      >
+                        <span className="roundRole">{role}</span>
+                        <div className="roundExerciseCopy">
+                          <strong>{exercise.name}</strong>
+                          <small>
+                            {plannedLoadLabel(exercise)} · {previousSet
+                              ? `last ${previousSet.reps} reps`
+                              : role === "B" && waitingForLead
+                                ? "Complete A first"
+                                : "No previous result"}
+                          </small>
+                        </div>
+                        <label className="roundReps">
+                          <span>REPS</span>
+                          <input
+                            disabled={waitingForLead}
+                            inputMode="numeric"
+                            onChange={(event) =>
+                              setEntries((current) => ({
+                                ...current,
+                                [key]: { ...entry, reps: event.target.value },
+                              }))
+                            }
+                            placeholder={previousSet ? String(previousSet.reps) : exercise.reps}
+                            value={entry.reps}
+                          />
+                        </label>
+                        <label className="doneControl roundDone">
+                          <input
+                            checked={isDone}
+                            disabled={waitingForLead}
+                            onChange={(event) =>
+                              updateSupersetRoundSet(
+                                exerciseIndex,
+                                setNumber,
+                                event.target.checked,
+                              )
+                            }
+                            type="checkbox"
+                          />
+                          <span>{isDone ? "✓" : ""}</span>
+                        </label>
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <div className="supersetRounds" aria-label="Superset rounds">
+                      {Array.from({ length: roundCount }, (_, roundIndex) => {
+                        const setNumber = roundIndex + 1;
+                        const leadKey = `${workout.day}-${workout.title}-${leadIndex}-${setNumber}`;
+                        const partnerKey = `${workout.day}-${workout.title}-${partnerIndex}-${setNumber}`;
+                        const roundDone = Boolean(completed[leadKey] && completed[partnerKey]);
+                        return (
+                          <article
+                            className={roundDone ? "supersetRound done" : "supersetRound"}
+                            key={`superset-round-${setNumber}`}
+                          >
+                            <header>
+                              <div>
+                                <span>ROUND {setNumber}</span>
+                                <strong>{roundDone ? "Complete" : "A → B"}</strong>
+                              </div>
+                              <small>{roundDone ? "✓ Done" : "Rest only after B"}</small>
+                            </header>
+                            {renderRoundExercise(lead, leadIndex, "A", setNumber)}
+                            <div className="supersetTransition">NO REST ↓</div>
+                            {renderRoundExercise(partner, partnerIndex, "B", setNumber)}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+                {activeWorkoutGroup.length !== 2 && workout.exercises.map((exercise, index) => {
                   if (!activeWorkoutGroup.includes(index)) return null;
                   const baseKey = `${workout.day}-${workout.title}-${index}`;
                   const previous = previousPerformance(exercise.name);
                   const targetWeight = plannedWeight(exercise);
                   const dropStages = plannedDropStages(exercise);
+                  const finalWorkingSetKey = `${baseKey}-${plannedSetCount(exercise)}`;
+                  const finalWorkingSetDone = Boolean(completed[finalWorkingSetKey]);
                   const inActiveSuperset = activeWorkoutGroup.length === 2;
                   const techniqueMeta = inActiveSuperset
                     ? null
@@ -3566,18 +3719,30 @@ export default function Home() {
                         )}
                       </div>
                       {dropStages.length > 0 && (
-                        <div className="dropSetLogger">
+                        <div className={finalWorkingSetDone ? "dropSetLogger active" : "dropSetLogger locked"}>
                           <div className="dropSetLoggerTitle">
                             <strong>Final-set drops</strong>
-                            <span>Continue without rest after your last working set</span>
+                            <span>
+                              {finalWorkingSetDone
+                                ? "Continue each drop without resting"
+                                : `Unlocks after Set ${plannedSetCount(exercise)}`}
+                            </span>
                           </div>
-                          {dropStages.map((stage, stageIndex) => {
+                          {!finalWorkingSetDone ? (
+                            <div className="dropSetLockedMessage">
+                              <span>LOCKED</span>
+                              <p>Complete your final working set, then Liftly will guide each drop in order.</p>
+                            </div>
+                          ) : dropStages.map((stage, stageIndex) => {
                             const key = `${baseKey}-drop-${stageIndex + 1}`;
                             const isDone = Boolean(completed[key]);
                             const entry = entries[key] ?? { reps: "" };
+                            const previousDropKey = `${baseKey}-drop-${stageIndex}`;
+                            const stageUnlocked =
+                              stageIndex === 0 || Boolean(completed[previousDropKey]);
                             return (
                               <div
-                                className={isDone ? "dropSetLoggerRow done" : "dropSetLoggerRow"}
+                                className={`${isDone ? "dropSetLoggerRow done" : "dropSetLoggerRow"} ${stageUnlocked ? "" : "waiting"}`.trim()}
                                 key={key}
                               >
                                 <span className="dropStageNumber">DROP {stageIndex + 1}</span>
@@ -3587,6 +3752,7 @@ export default function Home() {
                                     Reps for {exercise.name}, drop {stageIndex + 1}
                                   </span>
                                   <input
+                                    disabled={!stageUnlocked}
                                     inputMode="numeric"
                                     onChange={(event) =>
                                       setEntries((current) => ({
@@ -3601,6 +3767,7 @@ export default function Home() {
                                 <label className="doneControl">
                                   <input
                                     checked={isDone}
+                                    disabled={!stageUnlocked}
                                     onChange={(event) => {
                                       const checked = event.target.checked;
                                       const stageWeight = Number(stage.weight);
@@ -3639,51 +3806,53 @@ export default function Home() {
                     </div>
                   );
                 })}
-                <div className="exerciseStepper">
-                  <button
-                    disabled={activeWorkoutGroupIndex === 0}
-                    onClick={() =>
-                      setActiveWorkoutExercise(
-                        workoutExerciseGroups[activeWorkoutGroupIndex - 1][0],
-                      )
-                    }
-                    type="button"
-                  >
-                    ← Previous
-                  </button>
-                  <span>
-                    Step {activeWorkoutGroupIndex + 1} of {workoutExerciseGroups.length}
-                  </span>
-                  <button
-                    disabled={
-                      activeWorkoutGroupIndex === workoutExerciseGroups.length - 1
-                    }
-                    onClick={() =>
-                      setActiveWorkoutExercise(
-                        workoutExerciseGroups[activeWorkoutGroupIndex + 1][0],
-                      )
-                    }
-                    type="button"
-                  >
-                    Next →
-                  </button>
-                </div>
-                <div className="loggerFooter">
-                  <button
-                    className="secondaryAction"
-                    onClick={() => setPendingReset(true)}
-                    type="button"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    className="primaryAction"
-                    disabled={completedCount === 0 || saving}
-                    onClick={() => setFinishReview(true)}
-                    type="button"
-                  >
-                    Finish workout
-                  </button>
+                <div className="workoutActionBar">
+                  <div className="exerciseStepper">
+                    <button
+                      disabled={activeWorkoutGroupIndex === 0}
+                      onClick={() =>
+                        setActiveWorkoutExercise(
+                          workoutExerciseGroups[activeWorkoutGroupIndex - 1][0],
+                        )
+                      }
+                      type="button"
+                    >
+                      ← Previous
+                    </button>
+                    <span>
+                      Step {activeWorkoutGroupIndex + 1} of {workoutExerciseGroups.length}
+                    </span>
+                    <button
+                      disabled={
+                        activeWorkoutGroupIndex === workoutExerciseGroups.length - 1
+                      }
+                      onClick={() =>
+                        setActiveWorkoutExercise(
+                          workoutExerciseGroups[activeWorkoutGroupIndex + 1][0],
+                        )
+                      }
+                      type="button"
+                    >
+                      Next →
+                    </button>
+                  </div>
+                  <div className="loggerFooter">
+                    <button
+                      className="resetWorkoutAction"
+                      onClick={() => setPendingReset(true)}
+                      type="button"
+                    >
+                      Reset
+                    </button>
+                    <button
+                      className="primaryAction"
+                      disabled={completedCount === 0 || saving}
+                      onClick={() => setFinishReview(true)}
+                      type="button"
+                    >
+                      Review workout
+                    </button>
+                  </div>
                 </div>
               </section>
 

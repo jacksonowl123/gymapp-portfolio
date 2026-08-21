@@ -18,7 +18,7 @@ test("ships the Liftly product shell and exercise library", async () => {
   assert.match(page, /type View = "dashboard" \| "plan" \| "library" \| "workout" \| "progress" \| "coach"/);
   assert.match(page, /EXERCISE LIBRARY/);
   assert.match(page, /Add to training day/);
-  assert.match(page, /Finish workout/);
+  assert.match(page, /Review workout/);
   assert.match(page, /Build a plan that fits your week/);
 });
 
@@ -103,6 +103,11 @@ test("supports supersets and drop sets in My Plan and workout logging", async ()
   assert.match(page, /Complete matching sets together, then rest after B/);
   assert.match(styles, /\.loggerExerciseBlock\.supersetExercise/);
   assert.match(styles, /\.exerciseRail button\.supersetStep/);
+  assert.match(page, /className="supersetRounds"/);
+  assert.match(page, /Rest only after B/);
+  assert.match(styles, /\.supersetRoundExercise/);
+  assert.match(styles, /\.workoutActionBar/);
+  assert.match(page, /Complete your final working set, then Liftly will guide each drop in order/);
   assert.doesNotMatch(page, /className="sessionClock"/);
   assert.doesNotMatch(page, />Elapsed<\/span>/);
   assert.match(styles, /\.dropSetSequence[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);

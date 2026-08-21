@@ -4650,6 +4650,243 @@ button.previousSet:hover {
 .exerciseStepper button:disabled { color: #c8c8c1; cursor: default; }
 .exerciseStepper span { color: var(--muted); font-size: 9px; }
 
+.supersetRounds {
+  display: grid;
+  gap: 12px;
+  padding: 12px 20px 20px;
+}
+
+.supersetRound {
+  background: #fcfaff;
+  border: 1px solid #ded0f7;
+  border-left: 3px solid #805ad5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.supersetRound.done {
+  border-color: #b9cfa0;
+  border-left-color: #7e9f55;
+}
+
+.supersetRound > header {
+  align-items: center;
+  background: #f5f0ff;
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 12px;
+}
+
+.supersetRound.done > header {
+  background: #eff5e8;
+}
+
+.supersetRound > header div {
+  align-items: center;
+  display: flex;
+  gap: 9px;
+}
+
+.supersetRound > header span,
+.supersetRound > header small {
+  color: #6842a6;
+  font-family: var(--font-mono), monospace;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.supersetRound > header strong {
+  font-size: 11px;
+}
+
+.supersetRoundExercise {
+  align-items: center;
+  display: grid;
+  gap: 11px;
+  grid-template-columns: 30px minmax(150px, 1fr) 108px 46px;
+  padding: 10px 12px;
+}
+
+.supersetRoundExercise.done {
+  background: #f2f7ec;
+}
+
+.supersetRoundExercise.waiting,
+.supersetRoundExercise.unavailable {
+  opacity: .58;
+}
+
+.roundRole {
+  align-items: center;
+  background: #805ad5;
+  border-radius: 6px;
+  color: #fff;
+  display: flex;
+  font-family: var(--font-mono), monospace;
+  font-size: 10px;
+  font-weight: 850;
+  height: 30px;
+  justify-content: center;
+  width: 30px;
+}
+
+.roundExerciseCopy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.roundExerciseCopy strong {
+  font-size: 12px;
+}
+
+.roundExerciseCopy small {
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 3px;
+}
+
+.roundReps span {
+  color: var(--muted);
+  display: block;
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  margin-bottom: 3px;
+}
+
+.roundReps input {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 13px;
+  height: 42px;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.roundReps input:focus {
+  border-color: #805ad5;
+  outline: 2px solid rgba(128, 90, 213, .16);
+}
+
+.roundDone span {
+  height: 38px;
+  width: 38px;
+}
+
+.supersetTransition {
+  border-bottom: 1px dashed #d7c9ef;
+  border-top: 1px dashed #d7c9ef;
+  color: #6842a6;
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  font-weight: 800;
+  margin: 0 12px;
+  padding: 5px 0 5px 41px;
+}
+
+.setLoggerHead,
+.setLoggerRow {
+  grid-template-columns: 40px minmax(140px, 320px) 108px 48px;
+  max-width: 680px;
+}
+
+.dropSetLogger {
+  max-width: 680px;
+}
+
+.dropSetLogger.locked {
+  background: #fbfaf7;
+  border-style: dashed;
+}
+
+.dropSetLockedMessage {
+  align-items: center;
+  background: #fff;
+  border-radius: 6px;
+  display: flex;
+  gap: 10px;
+  padding: 11px;
+}
+
+.dropSetLockedMessage span {
+  background: #efeee8;
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: var(--font-mono), monospace;
+  font-size: 8px;
+  font-weight: 800;
+  padding: 5px 8px;
+}
+
+.dropSetLockedMessage p {
+  color: var(--muted);
+  font-size: 10px;
+  margin: 0;
+}
+
+.dropSetLoggerRow.waiting {
+  opacity: .5;
+}
+
+.workoutActionBar {
+  align-items: center;
+  background: rgba(255, 255, 255, .96);
+  border-top: 1px solid var(--line);
+  bottom: 0;
+  box-shadow: 0 -10px 24px rgba(31, 31, 27, .06);
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px 18px;
+  position: sticky;
+  z-index: 5;
+}
+
+.workoutActionBar .exerciseStepper {
+  border: 0;
+  max-width: 520px;
+  padding: 0;
+}
+
+.workoutActionBar .exerciseStepper button {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink);
+  min-height: 42px;
+  padding: 0 14px;
+}
+
+.workoutActionBar .exerciseStepper button:hover:not(:disabled) {
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
+.workoutActionBar .exerciseStepper button:disabled {
+  background: #f7f7f3;
+  color: #b1b2ab;
+}
+
+.workoutActionBar .loggerFooter {
+  align-items: center;
+  padding: 0;
+}
+
+.resetWorkoutAction {
+  background: transparent;
+  border: 0;
+  color: #9a4c39;
+  cursor: pointer;
+  font-size: 10px;
+  min-height: 42px;
+  padding: 0 10px;
+}
+
+.workoutActionBar .primaryAction {
+  min-height: 44px;
+  white-space: nowrap;
+}
+
 .sessionAside {
   position: sticky;
   top: 82px;
@@ -4840,8 +5077,27 @@ button.previousSet:hover {
   .activeSupersetSummary { grid-template-columns: 1fr; margin-inline: 12px; }
   .activeSupersetSummary i { justify-self: center; }
   .loggerExerciseBlock.supersetExercise { margin-inline: 12px; }
+  .supersetRounds { padding: 10px 12px 16px; }
+  .supersetRoundExercise {
+    gap: 8px;
+    grid-template-columns: 30px minmax(0, 1fr) 76px 44px;
+    padding: 9px;
+  }
+  .roundExerciseCopy small { font-size: 9px; }
+  .supersetTransition { margin-inline: 9px; padding-left: 38px; }
   .exerciseStepper span { display: none; }
   .exerciseStepper { grid-template-columns: 1fr 1fr; }
+  .workoutActionBar {
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    grid-template-columns: 1fr;
+    padding: 10px 12px;
+  }
+  .workoutActionBar .exerciseStepper { max-width: none; }
+  .workoutActionBar .loggerFooter {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .workoutActionBar .primaryAction { flex: 1; }
   .progressKpis { grid-template-columns: 1fr 1fr; }
 }
 
