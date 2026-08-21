@@ -1917,39 +1917,6 @@ input:focus-visible {
   gap: 8px;
 }
 
-.sessionClock {
-  align-items: center;
-  background: var(--ink);
-  border-radius: 8px;
-  color: #fff;
-  display: flex;
-  flex-direction: column;
-  min-width: 120px;
-  padding: 10px 12px;
-}
-
-.sessionClock strong {
-  font-family: var(--font-mono), monospace;
-  font-size: 19px;
-}
-
-.sessionClock span {
-  color: #9a9c95;
-  font-size: 10px;
-  margin: 2px 0 6px;
-}
-
-.sessionClock button {
-  background: #30312c;
-  border: 1px solid #41433c;
-  border-radius: 4px;
-  color: #e6e7e1;
-  cursor: pointer;
-  font-size: 10px;
-  min-height: 24px;
-  padding: 0 11px;
-}
-
 .loggerLayout {
   align-items: start;
   display: grid;
@@ -3840,7 +3807,6 @@ button.previousSet:hover {
     width: 100%;
   }
 
-  .sessionClock,
   .sessionProgress {
     flex: 1;
   }

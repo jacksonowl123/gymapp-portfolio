@@ -79,6 +79,8 @@ test("supports supersets and drop sets in My Plan and workout logging", async ()
   assert.match(page, /Complete matching sets together, then rest after B/);
   assert.match(styles, /\.loggerExerciseBlock\.supersetExercise/);
   assert.match(styles, /\.exerciseRail button\.supersetStep/);
+  assert.doesNotMatch(page, /className="sessionClock"/);
+  assert.doesNotMatch(page, />Elapsed<\/span>/);
   assert.match(styles, /\.dropSetSequence[\s\S]*?grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.addDropStage[\s\S]*?grid-column: 1 \/ -1/);
 });

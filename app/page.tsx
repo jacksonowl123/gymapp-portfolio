@@ -481,15 +481,6 @@ function formatTimer(seconds: number) {
   return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-function formatSessionTime(seconds: number) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const remainingSeconds = seconds % 60;
-  return hours > 0
-    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
-    : `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
-}
-
 function exercisesFromWorkouts(workouts: Workout[]) {
   return Object.fromEntries(
     dayLabels.map((day) => {
@@ -1387,7 +1378,7 @@ export default function Home() {
     setEntries(savedDraft.entries);
     setCompleted(savedDraft.completed);
     setSessionElapsed(restoredTiming.elapsedSeconds);
-    setSessionPaused(restoredTiming.paused);
+    setSessionPaused(false);
     setSessionStarted(true);
     setWorkoutNote(savedDraft.note);
     setTimerEndsAt(restoredTimerEndsAt);
@@ -3216,16 +3207,6 @@ export default function Home() {
                 </span>
               </div>
               <div className="workoutTitleActions">
-                <div className="sessionClock">
-                  <strong>{formatSessionTime(sessionElapsed)}</strong>
-                  <span>{sessionPaused ? "Session paused" : "Elapsed time"}</span>
-                  <button
-                    onClick={() => setSessionPaused((current) => !current)}
-                    type="button"
-                  >
-                    {sessionPaused ? "Resume" : "Pause"}
-                  </button>
-                </div>
                 <div className="sessionProgress">
                   <strong>{completedSets}/{totalPlannedSets}</strong>
                   <span>sets completed</span>
@@ -3709,7 +3690,6 @@ export default function Home() {
                     <span>{Math.round((completedSets / totalPlannedSets) * 100)}%</span>
                   </div>
                   <div className="summaryRows">
-                    <p><span>Elapsed</span><strong>{formatSessionTime(sessionElapsed)}</strong></p>
                     <p><span>Volume</span><strong>{currentWorkoutVolume.toLocaleString()} kg</strong></p>
                     <p><span>Sets completed</span><strong>{completedSets}</strong></p>
                     <p><span>Sets remaining</span><strong>{totalPlannedSets - completedSets}</strong></p>
