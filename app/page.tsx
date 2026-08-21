@@ -2018,8 +2018,8 @@ export default function Home() {
   const navItems: Array<{ id: View; label: string; icon: string }> = [
     { id: "dashboard", label: "Dashboard", icon: "⌂" },
     { id: "plan", label: "My plan", icon: "▦" },
-    { id: "library", label: "Exercises", icon: "≡" },
     { id: "workout", label: "Log workout", icon: "+" },
+    { id: "library", label: "Exercises", icon: "≡" },
     { id: "progress", label: "Progress", icon: "◔" },
     { id: "coach", label: "AI Coach", icon: "✦" },
   ];

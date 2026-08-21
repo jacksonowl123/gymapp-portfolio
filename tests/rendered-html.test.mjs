@@ -22,6 +22,17 @@ test("ships the Liftly product shell and exercise library", async () => {
   assert.match(page, /Build a plan that fits your week/);
 });
 
+test("keeps My plan beside Log workout in navigation", async () => {
+  const page = await source("app/page.tsx");
+  const planPosition = page.indexOf('{ id: "plan", label: "My plan"');
+  const workoutPosition = page.indexOf('{ id: "workout", label: "Log workout"');
+  const libraryPosition = page.indexOf('{ id: "library", label: "Exercises"');
+
+  assert.ok(planPosition >= 0);
+  assert.ok(workoutPosition > planPosition);
+  assert.ok(libraryPosition > workoutPosition);
+});
+
 test("keeps unfinished workout sessions recoverable", async () => {
   const page = await source("app/page.tsx");
 
